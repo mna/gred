@@ -54,11 +54,11 @@ func DecodeRequest(b []byte) (Array, error) {
 	if err != nil {
 		return nil, err
 	}
-	if ar, ok := val.(Array); !ok {
+	ar, ok := val.(Array)
+	if !ok {
 		return nil, ErrNotAnArray
-	} else {
-		return ar, nil
 	}
+	return ar, nil
 }
 
 // Decode decodes the provided byte slice and returns the parsed value.
