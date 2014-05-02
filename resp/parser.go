@@ -3,8 +3,12 @@ package resp
 import "errors"
 
 var (
-	ErrInvalidInteger = errors.New("resp: invalid integer character")
-	ErrMissingCRLF    = errors.New("resp: missing CRLF")
+	ErrNoData            = errors.New("resp: no data")
+	ErrInvalidPrefix     = errors.New("resp: invalid prefix")
+	ErrMissingCRLF       = errors.New("resp: missing CRLF")
+	ErrInvalidInteger    = errors.New("resp: invalid integer character")
+	ErrInvalidBulkString = errors.New("resp: invalid bulk string")
+	ErrInvalidArray      = errors.New("resp: invalid array")
 )
 
 type Integer int64
@@ -12,6 +16,10 @@ type Integer int64
 type Error []byte
 
 type SimpleString []byte
+
+type BulkString []byte
+
+type Array []interface{}
 
 func DecodeRequest(b []byte) ([][]byte, error) {
 	return nil, nil
@@ -21,30 +29,92 @@ func Decode(b []byte) ([]interface{}, error) {
 	return nil, nil
 }
 
-func decodePayload(b []byte, isreq bool) (interface{}, error) {
-	var val interface{}
-	var err error
-
-	for i := 0; i < len(b); {
-		ch := b[i]
-		i++
-		switch ch {
-		case '+':
-			// Simple string
-			val, _, err = decodeSimpleString(b[i:])
-		case '-':
-			// Error
-			val, _, err = decodeError(b[i:])
-		case ':':
-			// Integer
-			val, _, err = decodeInteger(b[i:])
-		}
-		if err != nil {
-			return nil, err
-		}
-		return val, nil
+func decodeValue(b []byte) (val interface{}, n int, err error) {
+	if len(b) == 0 {
+		return nil, 0, ErrNoData
 	}
-	return nil, nil
+
+	switch b[0] {
+	case '+':
+		// Simple string
+		val, n, err = decodeSimpleString(b[1:])
+	case '-':
+		// Error
+		val, n, err = decodeError(b[1:])
+	case ':':
+		// Integer
+		val, n, err = decodeInteger(b[1:])
+	case '$':
+		// Bulk string
+		val, n, err = decodeBulkString(b[1:])
+	case '*':
+		// Array
+		val, n, err = decodeArray(b[1:])
+	default:
+		err = ErrInvalidPrefix
+	}
+
+	// n+1 for the prefix consumed by this func
+	return val, n + 1, err
+}
+
+func decodeArray(b []byte) (Array, int, error) {
+	// First comes the number of elements in the array
+	cnt, n, err := decodeInteger(b)
+	if err != nil {
+		return nil, n, err
+	}
+	switch {
+	case cnt == -1:
+		// Nil array
+		return Array(nil), n, nil
+
+	case cnt == 0:
+		// Empty, but allocated, array
+		return Array{}, n, nil
+
+	case cnt < 0:
+		// Invalid length
+		return nil, n, ErrInvalidArray
+
+	default:
+		// Allocate the array
+		ar := make(Array, cnt)
+
+		// Decode each value
+		for i := 0; i < int(cnt); i++ {
+			val, nn, err := decodeValue(b[n:])
+			n += nn
+			if err != nil {
+				return nil, n, err
+			}
+			ar[i] = val
+		}
+		return ar, n, nil
+	}
+}
+
+func decodeBulkString(b []byte) (BulkString, int, error) {
+	// First comes the length of the bulk string, an integer
+	cnt, n, err := decodeInteger(b)
+	if err != nil {
+		return nil, n, err
+	}
+	switch {
+	case cnt == -1:
+		// Special case to represent a nil bulk string
+		return BulkString(nil), n, nil
+
+	case cnt < -1:
+		return nil, n, ErrInvalidBulkString
+
+	case len(b) < int(cnt)+n+2:
+		return nil, n, ErrInvalidBulkString
+
+	default:
+		// Then the string is cnt long, and bytes read is cnt+n+2 (for ending CRLF)
+		return BulkString(b[n : int(cnt)+n]), int(cnt) + n + 2, nil
+	}
 }
 
 // decodeInteger decodes the byte slice as a singed 64bit integer. The
@@ -64,7 +134,6 @@ loop:
 			break loop
 
 		case '\n':
-			// Will return with ErrMissingCRLF
 			break loop
 
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
@@ -84,7 +153,8 @@ loop:
 	if !cr {
 		return 0, n, ErrMissingCRLF
 	}
-	return sign * val, n, nil
+	// Presume next byte was \n
+	return sign * val, n + 1, nil
 }
 
 // decodeSimpleString decodes the byte slice as a SimpleString. The
@@ -105,7 +175,8 @@ func decodeSimpleString(b []byte) (SimpleString, int, error) {
 	if end == -1 {
 		return nil, n, ErrMissingCRLF
 	}
-	return SimpleString(b[:end]), n, nil
+	// Presume next byte was \n
+	return SimpleString(b[:end]), n + 1, nil
 }
 
 // decodeError decodes the byte slice as an Error. The '-' prefix
