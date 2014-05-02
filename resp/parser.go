@@ -1,34 +1,73 @@
+// Package resp implements an efficient decoder for the Redis Serialization Protocol (RESP).
+//
+// See http://redis.io/topics/protocol for the reference.
 package resp
 
 import "errors"
 
 var (
-	ErrNoData            = errors.New("resp: no data")
-	ErrInvalidPrefix     = errors.New("resp: invalid prefix")
-	ErrMissingCRLF       = errors.New("resp: missing CRLF")
-	ErrInvalidInteger    = errors.New("resp: invalid integer character")
+	// ErrNoData is returned if an empty slice was passed to a Decode function.
+	ErrNoData = errors.New("resp: no data")
+
+	// ErrInvalidPrefix is returned if the data contains an unrecognized prefix.
+	ErrInvalidPrefix = errors.New("resp: invalid prefix")
+
+	// ErrMissingCRLF is returned if a \r\n is missing in the data slice.
+	ErrMissingCRLF = errors.New("resp: missing CRLF")
+
+	// ErrInvalidInteger is returned if an invalid character is found while parsing an integer.
+	ErrInvalidInteger = errors.New("resp: invalid integer character")
+
+	// ErrInvalidBulkString is returned if the bulk string data cannot be decoded.
 	ErrInvalidBulkString = errors.New("resp: invalid bulk string")
-	ErrInvalidArray      = errors.New("resp: invalid array")
+
+	// ErrInvalidArray is returned if the array data cannot be decoded.
+	ErrInvalidArray = errors.New("resp: invalid array")
+
+	// ErrNotAnArray is returned if the DecodeRequest function is called and
+	// the decoded value is not an array.
+	ErrNotAnArray = errors.New("resp: expected an array type")
 )
 
+// Integer represents a signed, 64-bit integer as defined by the RESP.
 type Integer int64
 
+// Error represents an error string as defined by the RESP. It cannot
+// contain \r or \n characters.
 type Error []byte
 
+// SimpleString represents a simple string as defined by the RESP. It
+// cannot contain \r or \n characters.
 type SimpleString []byte
 
+// BulkString represents a binary-safe string as defined by the RESP.
 type BulkString []byte
 
+// Array represents an array of values, as defined by the RESP.
 type Array []interface{}
 
-func DecodeRequest(b []byte) ([][]byte, error) {
-	return nil, nil
+// DecodeRequest decodes the provided byte slice and returns the array
+// representing the request. If the encoded value is not an array, it
+// returns ErrNotAnArray.
+func DecodeRequest(b []byte) (Array, error) {
+	val, _, err := decodeValue(b)
+	if err != nil {
+		return nil, err
+	}
+	if ar, ok := val.(Array); !ok {
+		return nil, ErrNotAnArray
+	} else {
+		return ar, nil
+	}
 }
 
+// Decode decodes the provided byte slice and returns the parsed value.
 func Decode(b []byte) ([]interface{}, error) {
 	return nil, nil
 }
 
+// decodeValue parses the byte slice and decodes the value based on its
+// prefix, as defined by the RESP protocol.
 func decodeValue(b []byte) (val interface{}, n int, err error) {
 	if len(b) == 0 {
 		return nil, 0, ErrNoData
@@ -58,6 +97,8 @@ func decodeValue(b []byte) (val interface{}, n int, err error) {
 	return val, n + 1, err
 }
 
+// decodeArray decodes the byte slice as an array. It assumes the
+// '*' prefix is already consumed.
 func decodeArray(b []byte) (Array, int, error) {
 	// First comes the number of elements in the array
 	cnt, n, err := decodeInteger(b)
@@ -67,7 +108,7 @@ func decodeArray(b []byte) (Array, int, error) {
 	switch {
 	case cnt == -1:
 		// Nil array
-		return Array(nil), n, nil
+		return nil, n, nil
 
 	case cnt == 0:
 		// Empty, but allocated, array
@@ -94,6 +135,8 @@ func decodeArray(b []byte) (Array, int, error) {
 	}
 }
 
+// decodeBulkString decodes the byte slice as a binary-safe string. The
+// '$' prefix is assumed to be already consumed.
 func decodeBulkString(b []byte) (BulkString, int, error) {
 	// First comes the length of the bulk string, an integer
 	cnt, n, err := decodeInteger(b)
@@ -103,7 +146,7 @@ func decodeBulkString(b []byte) (BulkString, int, error) {
 	switch {
 	case cnt == -1:
 		// Special case to represent a nil bulk string
-		return BulkString(nil), n, nil
+		return nil, n, nil
 
 	case cnt < -1:
 		return nil, n, ErrInvalidBulkString
