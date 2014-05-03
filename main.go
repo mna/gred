@@ -35,6 +35,7 @@ func main() {
 					}
 				}
 				log.Printf("%s\n", ar)
+
 				_, err = c.Write([]byte("+OK\r\n"))
 				if err != nil {
 					log.Println(err)
