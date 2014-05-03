@@ -62,8 +62,9 @@ func DecodeRequest(b []byte) (Array, error) {
 }
 
 // Decode decodes the provided byte slice and returns the parsed value.
-func Decode(b []byte) ([]interface{}, error) {
-	return nil, nil
+func Decode(b []byte) (interface{}, error) {
+	val, _, err := decodeValue(b)
+	return val, err
 }
 
 // decodeValue parses the byte slice and decodes the value based on its

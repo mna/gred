@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"log"
 	"net"
 
@@ -25,18 +26,23 @@ func main() {
 		// multiple connections may be served concurrently.
 		go func(c net.Conn) {
 			log.Println("request")
-			buf := make([]byte, 1024)
-			n, err := c.Read(buf)
-			if err != nil {
-				log.Println(err)
+			for {
+				buf := make([]byte, 4096)
+				n, err := c.Read(buf)
+				if err != nil {
+					log.Println(err)
+					if err == io.EOF {
+						break
+					}
+				}
+				log.Println(string(buf), n)
+				ar, err := resp.DecodeRequest(buf)
+				if err != nil {
+					log.Println(err)
+				}
+				log.Printf("%#v\n", ar)
+				c.Write([]byte("+OK\r\n"))
 			}
-			log.Println(string(buf), n)
-			ar, err := resp.DecodeRequest(buf)
-			if err != nil {
-				log.Println(err)
-			}
-			log.Printf("%#v\n", ar)
-			c.Write([]byte("+OK\r\n"))
 			// Shut down the connection.
 			c.Close()
 		}(conn)
