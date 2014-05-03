@@ -55,7 +55,7 @@ var cases = []struct {
 			Array{BulkString(""), BulkString(nil)}}, nil},
 }
 
-func TestValues(t *testing.T) {
+func TestDecode(t *testing.T) {
 	for i, c := range cases {
 		got, err := Decode(bytes.NewReader(c.in))
 		if err != c.err {
@@ -142,7 +142,7 @@ func assertArray(t *testing.T, i int, got Array, exp interface{}) {
 	}
 }
 
-func BenchmarkSimpleString(b *testing.B) {
+func BenchmarkDecodeSimpleString(b *testing.B) {
 	r := bytes.NewReader(cases[3].in)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -150,7 +150,7 @@ func BenchmarkSimpleString(b *testing.B) {
 	}
 }
 
-func BenchmarkError(b *testing.B) {
+func BenchmarkDecodeError(b *testing.B) {
 	r := bytes.NewReader(cases[9].in)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -158,7 +158,7 @@ func BenchmarkError(b *testing.B) {
 	}
 }
 
-func BenchmarkInteger(b *testing.B) {
+func BenchmarkDecodeInteger(b *testing.B) {
 	r := bytes.NewReader(cases[17].in)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -166,7 +166,7 @@ func BenchmarkInteger(b *testing.B) {
 	}
 }
 
-func BenchmarkBulkString(b *testing.B) {
+func BenchmarkDecodeBulkString(b *testing.B) {
 	r := bytes.NewReader(cases[29].in)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -174,7 +174,7 @@ func BenchmarkBulkString(b *testing.B) {
 	}
 }
 
-func BenchmarkArray(b *testing.B) {
+func BenchmarkDecodeArray(b *testing.B) {
 	r := bytes.NewReader(cases[37].in)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
