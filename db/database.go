@@ -14,6 +14,13 @@ type Database struct {
 	keys map[string]*Key
 }
 
+func New(index int) *Database {
+	return &Database{
+		ix:   index,
+		keys: make(map[string]*Key),
+	}
+}
+
 func (d *Database) Do(cmd string, args ...string) (interface{}, error) {
 	switch strings.ToLower(cmd) {
 	case "set":

@@ -68,7 +68,7 @@ type Array []interface{}
 func (a Array) String() string {
 	var buf bytes.Buffer
 	for i, v := range a {
-		buf.WriteString(fmt.Sprintf("[%2d] %s\n", i, v))
+		buf.WriteString(fmt.Sprintf("[%2d] %[2]s (%[2]T)\n", i, v))
 	}
 	return buf.String()
 }

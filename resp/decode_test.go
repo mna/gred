@@ -6,65 +6,72 @@ import (
 	"testing"
 )
 
-var cases = []struct {
-	in  []byte
-	out interface{}
+var decodeErrCases = []struct {
+	enc []byte
+	val interface{}
+	err error
+}{
+	0:  {[]byte("+ceci n'est pas un string"), SimpleString(nil), io.EOF},
+	1:  {[]byte("+"), SimpleString(nil), io.EOF},
+	2:  {[]byte("-ceci n'est pas un string"), Error(nil), io.EOF},
+	3:  {[]byte("-"), Error(nil), io.EOF},
+	4:  {[]byte(":123\n"), Integer(0), ErrMissingCRLF},
+	5:  {[]byte(":123a\r\n"), Integer(0), ErrInvalidInteger},
+	6:  {[]byte(":123"), Integer(0), io.EOF},
+	7:  {[]byte(":-1-3\r\n"), Integer(0), ErrInvalidInteger},
+	8:  {[]byte(":"), Integer(0), io.EOF},
+	9:  {[]byte("$"), BulkString(nil), io.EOF},
+	10: {[]byte("$6\r\nc\r\n"), BulkString(nil), ErrInvalidBulkString},
+	11: {[]byte("$6\r\nabc\r\n"), BulkString(nil), ErrInvalidBulkString},
+	12: {[]byte("$6\nabc\r\n"), BulkString(nil), ErrMissingCRLF},
+	13: {[]byte("$4\r\nabc\r\n"), BulkString(nil), ErrInvalidBulkString},
+	14: {[]byte("$-3\r\n"), BulkString(nil), ErrInvalidBulkString},
+	15: {[]byte("*1\n:10\r\n"), Array{}, ErrMissingCRLF},
+	16: {[]byte("*-3\r\n"), Array(nil), ErrInvalidArray},
+	17: {[]byte(":\r\n"), Integer(0), nil},
+	18: {[]byte("$\r\n\r\n"), BulkString(""), nil},
+}
+
+var validCases = []struct {
+	enc []byte
+	val interface{}
 	err error
 }{
 	0:  {[]byte{'+', '\r', '\n'}, SimpleString{}, nil},
 	1:  {[]byte{'+', 'a', '\r', '\n'}, SimpleString{'a'}, nil},
 	2:  {[]byte{'+', 'O', 'K', '\r', '\n'}, SimpleString{'O', 'K'}, nil},
 	3:  {[]byte("+ceci n'est pas un string\r\n"), SimpleString("ceci n'est pas un string"), nil},
-	4:  {[]byte("+ceci n'est pas un string"), SimpleString(nil), io.EOF},
-	5:  {[]byte("+"), SimpleString(nil), io.EOF},
-	6:  {[]byte{'-', '\r', '\n'}, Error{}, nil},
-	7:  {[]byte{'-', 'a', '\r', '\n'}, Error{'a'}, nil},
-	8:  {[]byte{'-', 'K', 'O', '\r', '\n'}, Error{'K', 'O'}, nil},
-	9:  {[]byte("-ceci n'est pas un string\r\n"), Error("ceci n'est pas un string"), nil},
-	10: {[]byte("-ceci n'est pas un string"), Error(nil), io.EOF},
-	11: {[]byte("-"), Error(nil), io.EOF},
-	12: {[]byte(":\r\n"), Integer(0), nil},
-	13: {[]byte(":1\r\n"), Integer(1), nil},
-	14: {[]byte(":123\r\n"), Integer(123), nil},
-	15: {[]byte(":123\n"), Integer(0), ErrMissingCRLF},
-	16: {[]byte(":123a\r\n"), Integer(0), ErrInvalidInteger},
-	17: {[]byte(":-123\r\n"), Integer(-123), nil},
-	18: {[]byte(":123"), Integer(0), io.EOF},
-	19: {[]byte(":-1-3\r\n"), Integer(0), ErrInvalidInteger},
-	20: {[]byte(":"), Integer(0), io.EOF},
-	21: {[]byte("$0\r\n\r\n"), BulkString(""), nil},
-	22: {[]byte("$"), BulkString(nil), io.EOF},
-	23: {[]byte("$\r\n\r\n"), BulkString(""), nil},
-	24: {[]byte("$24\r\nceci n'est pas un string\r\n"), BulkString("ceci n'est pas un string"), nil},
-	25: {[]byte("$6\r\nc\r\n"), BulkString(nil), ErrInvalidBulkString},
-	26: {[]byte("$6\r\nabc\r\n"), BulkString(nil), ErrInvalidBulkString},
-	27: {[]byte("$6\nabc\r\n"), BulkString(nil), ErrMissingCRLF},
-	28: {[]byte("$4\r\nabc\r\n"), BulkString(nil), ErrInvalidBulkString},
-	29: {[]byte("$51\r\nceci n'est pas un string\r\navec\rdes\nsauts\r\nde\x00ligne.\r\n"), BulkString("ceci n'est pas un string\r\navec\rdes\nsauts\r\nde\x00ligne."), nil},
-	30: {[]byte("$-1\r\n"), BulkString(nil), nil},
-	31: {[]byte("$-3\r\n"), BulkString(nil), ErrInvalidBulkString},
-	32: {[]byte("*0\r\n"), Array{}, nil},
-	33: {[]byte("*1\r\n:10\r\n"), Array{Integer(10)}, nil},
-	34: {[]byte("*1\n:10\r\n"), Array{}, ErrMissingCRLF},
-	35: {[]byte("*-1\r\n"), Array(nil), nil},
-	36: {[]byte("*-3\r\n"), Array(nil), ErrInvalidArray},
-	37: {[]byte("*3\r\n+string\r\n-error\r\n:-2345\r\n"),
+	4:  {[]byte{'-', '\r', '\n'}, Error{}, nil},
+	5:  {[]byte{'-', 'a', '\r', '\n'}, Error{'a'}, nil},
+	6:  {[]byte{'-', 'K', 'O', '\r', '\n'}, Error{'K', 'O'}, nil},
+	7:  {[]byte("-ceci n'est pas un string\r\n"), Error("ceci n'est pas un string"), nil},
+	8:  {[]byte(":1\r\n"), Integer(1), nil},
+	9:  {[]byte(":123\r\n"), Integer(123), nil},
+	10: {[]byte(":-123\r\n"), Integer(-123), nil},
+	11: {[]byte("$0\r\n\r\n"), BulkString(""), nil},
+	12: {[]byte("$24\r\nceci n'est pas un string\r\n"), BulkString("ceci n'est pas un string"), nil},
+	13: {[]byte("$51\r\nceci n'est pas un string\r\navec\rdes\nsauts\r\nde\x00ligne.\r\n"), BulkString("ceci n'est pas un string\r\navec\rdes\nsauts\r\nde\x00ligne."), nil},
+	14: {[]byte("$-1\r\n"), BulkString(nil), nil},
+	15: {[]byte("*0\r\n"), Array{}, nil},
+	16: {[]byte("*1\r\n:10\r\n"), Array{Integer(10)}, nil},
+	17: {[]byte("*-1\r\n"), Array(nil), nil},
+	18: {[]byte("*3\r\n+string\r\n-error\r\n:-2345\r\n"),
 		Array{SimpleString("string"), Error("error"), Integer(-2345)}, nil},
-	38: {[]byte("*5\r\n+string\r\n-error\r\n:-2345\r\n$4\r\nallo\r\n*2\r\n$0\r\n\r\n$-1\r\n"),
+	19: {[]byte("*5\r\n+string\r\n-error\r\n:-2345\r\n$4\r\nallo\r\n*2\r\n$0\r\n\r\n$-1\r\n"),
 		Array{SimpleString("string"), Error("error"), Integer(-2345), BulkString("allo"),
 			Array{BulkString(""), BulkString(nil)}}, nil},
 }
 
 func TestDecode(t *testing.T) {
-	for i, c := range cases {
-		got, err := Decode(bytes.NewReader(c.in))
+	for i, c := range append(validCases, decodeErrCases...) {
+		got, err := Decode(bytes.NewReader(c.enc))
 		if err != c.err {
 			t.Errorf("%d: expected error %v, got %v", i, c.err, err)
 		}
-		if got == nil && c.out == nil {
+		if got == nil && c.val == nil {
 			continue
 		}
-		assertValue(t, i, got, c.out)
+		assertValue(t, i, got, c.val)
 	}
 }
 
@@ -143,7 +150,7 @@ func assertArray(t *testing.T, i int, got Array, exp interface{}) {
 }
 
 func BenchmarkDecodeSimpleString(b *testing.B) {
-	r := bytes.NewReader(cases[3].in)
+	r := bytes.NewReader(validCases[3].enc)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Decode(r)
@@ -151,7 +158,7 @@ func BenchmarkDecodeSimpleString(b *testing.B) {
 }
 
 func BenchmarkDecodeError(b *testing.B) {
-	r := bytes.NewReader(cases[9].in)
+	r := bytes.NewReader(validCases[7].enc)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Decode(r)
@@ -159,7 +166,7 @@ func BenchmarkDecodeError(b *testing.B) {
 }
 
 func BenchmarkDecodeInteger(b *testing.B) {
-	r := bytes.NewReader(cases[17].in)
+	r := bytes.NewReader(validCases[10].enc)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Decode(r)
@@ -167,7 +174,7 @@ func BenchmarkDecodeInteger(b *testing.B) {
 }
 
 func BenchmarkDecodeBulkString(b *testing.B) {
-	r := bytes.NewReader(cases[29].in)
+	r := bytes.NewReader(validCases[13].enc)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Decode(r)
@@ -175,7 +182,7 @@ func BenchmarkDecodeBulkString(b *testing.B) {
 }
 
 func BenchmarkDecodeArray(b *testing.B) {
-	r := bytes.NewReader(cases[37].in)
+	r := bytes.NewReader(validCases[19].enc)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Decode(r)

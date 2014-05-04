@@ -6,12 +6,15 @@ import (
 	"strconv"
 )
 
+// ErrInvalidValue is returned if the value to encode is invalid.
 var ErrInvalidValue = errors.New("resp: invalid value")
 
+// Encode encode the value v and writes the serialized data to w.
 func Encode(w io.Writer, v interface{}) error {
 	return encodeValue(w, v)
 }
 
+// encodeValue encodes the value v and writes the serialized data to w.
 func encodeValue(w io.Writer, v interface{}) error {
 	switch v := v.(type) {
 	case SimpleString:
@@ -29,6 +32,7 @@ func encodeValue(w io.Writer, v interface{}) error {
 	}
 }
 
+// encodeArray encodes an array value to w.
 func encodeArray(w io.Writer, v Array) error {
 	// Special case for a nil array
 	if v == nil {
@@ -53,6 +57,7 @@ func encodeArray(w io.Writer, v Array) error {
 	return nil
 }
 
+// encodeBulkString encodes a bulk string to w.
 func encodeBulkString(w io.Writer, v BulkString) error {
 	// Special case for a nil bulk string
 	if v == nil {
@@ -71,18 +76,22 @@ func encodeBulkString(w io.Writer, v BulkString) error {
 	return err
 }
 
+// encodeInteger encodes an integer value to w.
 func encodeInteger(w io.Writer, v Integer) error {
 	return encodePrefixed(w, ':', []byte(strconv.FormatInt(int64(v), 10)))
 }
 
+// encodeSimpleString encodes a simple string value to w.
 func encodeSimpleString(w io.Writer, v SimpleString) error {
 	return encodePrefixed(w, '+', v)
 }
 
+// encodeError encodes an error value to w.
 func encodeError(w io.Writer, v Error) error {
 	return encodePrefixed(w, '-', v)
 }
 
+// encodePrefixed encodes the data v to w, with the specified prefix.
 func encodePrefixed(w io.Writer, prefix byte, v []byte) error {
 	buf := make([]byte, len(v)+3)
 	buf[0] = prefix
