@@ -30,6 +30,10 @@ var (
 	// ErrNotAnArray is returned if the DecodeRequest function is called and
 	// the decoded value is not an array.
 	ErrNotAnArray = errors.New("resp: expected an array type")
+
+	// ErrInvalidRequest is returned if the DecodeRequest function is called and
+	// the decoded value is not an array containing only bulk strings, and at least 1 element.
+	ErrInvalidRequest = errors.New("resp: invalid request, must be an array of bulk strings with at least one element")
 )
 
 // Integer represents a signed, 64-bit integer as defined by the RESP.
@@ -63,17 +67,35 @@ func (a Array) String() string {
 
 // DecodeRequest decodes the provided byte slice and returns the array
 // representing the request. If the encoded value is not an array, it
-// returns ErrNotAnArray.
-func DecodeRequest(r io.Reader) (Array, error) {
+// returns ErrNotAnArray, and if it is not a valid request, it returns ErrInvalidRequest.
+func DecodeRequest(r io.Reader) ([]string, error) {
+	// Decode the value
 	val, err := Decode(r)
 	if err != nil {
 		return nil, err
 	}
+
+	// Must be an array
 	ar, ok := val.(Array)
 	if !ok {
 		return nil, ErrNotAnArray
 	}
-	return ar, nil
+
+	// Must have at least one element
+	if len(ar) < 1 {
+		return nil, ErrInvalidRequest
+	}
+
+	// Must have only strings
+	strs := make([]string, len(ar))
+	for i, v := range ar {
+		if v, ok := v.(string); !ok {
+			return nil, ErrInvalidRequest
+		} else {
+			strs[i] = v
+		}
+	}
+	return strs, nil
 }
 
 // Decode decodes the provided byte slice and returns the parsed value.
