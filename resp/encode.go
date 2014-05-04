@@ -27,6 +27,8 @@ func encodeValue(w io.Writer, v interface{}) error {
 		return encodeBulkString(w, v)
 	case Array:
 		return encodeArray(w, v)
+	case nil:
+		return encodeNil(w)
 	default:
 		return ErrInvalidValue
 	}
@@ -36,13 +38,13 @@ func encodeValue(w io.Writer, v interface{}) error {
 func encodeArray(w io.Writer, v Array) error {
 	// Special case for a nil array
 	if v == nil {
-		err := encodePrefixed(w, '*', []byte("-1"))
+		err := encodePrefixed(w, '*', "-1")
 		return err
 	}
 
 	// First encode the number of elements
 	n := len(v)
-	err := encodePrefixed(w, '*', []byte(strconv.Itoa(n)))
+	err := encodePrefixed(w, '*', strconv.Itoa(n))
 	if err != nil {
 		return err
 	}
@@ -59,40 +61,39 @@ func encodeArray(w io.Writer, v Array) error {
 
 // encodeBulkString encodes a bulk string to w.
 func encodeBulkString(w io.Writer, v BulkString) error {
-	// Special case for a nil bulk string
-	if v == nil {
-		err := encodePrefixed(w, '$', []byte("-1"))
-		return err
-	}
-
 	// First encode the length
 	n := len(v)
-	err := encodePrefixed(w, '$', []byte(strconv.Itoa(n)))
+	err := encodePrefixed(w, '$', strconv.Itoa(n))
 	if err != nil {
 		return err
 	}
 	// Then the string
-	_, err = w.Write(append(v, '\r', '\n'))
+	_, err = w.Write(append([]byte(v), '\r', '\n'))
 	return err
 }
 
 // encodeInteger encodes an integer value to w.
 func encodeInteger(w io.Writer, v Integer) error {
-	return encodePrefixed(w, ':', []byte(strconv.FormatInt(int64(v), 10)))
+	return encodePrefixed(w, ':', strconv.FormatInt(int64(v), 10))
 }
 
 // encodeSimpleString encodes a simple string value to w.
 func encodeSimpleString(w io.Writer, v SimpleString) error {
-	return encodePrefixed(w, '+', v)
+	return encodePrefixed(w, '+', string(v))
 }
 
 // encodeError encodes an error value to w.
 func encodeError(w io.Writer, v Error) error {
-	return encodePrefixed(w, '-', v)
+	return encodePrefixed(w, '-', string(v))
+}
+
+// encodeNil encodes a nil value as a nil bulk string.
+func encodeNil(w io.Writer) error {
+	return encodePrefixed(w, '$', "-1")
 }
 
 // encodePrefixed encodes the data v to w, with the specified prefix.
-func encodePrefixed(w io.Writer, prefix byte, v []byte) error {
+func encodePrefixed(w io.Writer, prefix byte, v string) error {
 	buf := make([]byte, len(v)+3)
 	buf[0] = prefix
 	copy(buf[1:], v)

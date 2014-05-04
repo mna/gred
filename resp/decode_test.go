@@ -11,21 +11,21 @@ var decodeErrCases = []struct {
 	val interface{}
 	err error
 }{
-	0:  {[]byte("+ceci n'est pas un string"), SimpleString(nil), io.EOF},
-	1:  {[]byte("+"), SimpleString(nil), io.EOF},
-	2:  {[]byte("-ceci n'est pas un string"), Error(nil), io.EOF},
-	3:  {[]byte("-"), Error(nil), io.EOF},
+	0:  {[]byte("+ceci n'est pas un string"), nil, io.EOF},
+	1:  {[]byte("+"), nil, io.EOF},
+	2:  {[]byte("-ceci n'est pas un string"), nil, io.EOF},
+	3:  {[]byte("-"), nil, io.EOF},
 	4:  {[]byte(":123\n"), Integer(0), ErrMissingCRLF},
 	5:  {[]byte(":123a\r\n"), Integer(0), ErrInvalidInteger},
 	6:  {[]byte(":123"), Integer(0), io.EOF},
 	7:  {[]byte(":-1-3\r\n"), Integer(0), ErrInvalidInteger},
 	8:  {[]byte(":"), Integer(0), io.EOF},
-	9:  {[]byte("$"), BulkString(nil), io.EOF},
-	10: {[]byte("$6\r\nc\r\n"), BulkString(nil), ErrInvalidBulkString},
-	11: {[]byte("$6\r\nabc\r\n"), BulkString(nil), ErrInvalidBulkString},
-	12: {[]byte("$6\nabc\r\n"), BulkString(nil), ErrMissingCRLF},
-	13: {[]byte("$4\r\nabc\r\n"), BulkString(nil), ErrInvalidBulkString},
-	14: {[]byte("$-3\r\n"), BulkString(nil), ErrInvalidBulkString},
+	9:  {[]byte("$"), nil, io.EOF},
+	10: {[]byte("$6\r\nc\r\n"), nil, ErrInvalidBulkString},
+	11: {[]byte("$6\r\nabc\r\n"), nil, ErrInvalidBulkString},
+	12: {[]byte("$6\nabc\r\n"), nil, ErrMissingCRLF},
+	13: {[]byte("$4\r\nabc\r\n"), nil, ErrInvalidBulkString},
+	14: {[]byte("$-3\r\n"), nil, ErrInvalidBulkString},
 	15: {[]byte("*1\n:10\r\n"), Array{}, ErrMissingCRLF},
 	16: {[]byte("*-3\r\n"), Array(nil), ErrInvalidArray},
 	17: {[]byte(":\r\n"), Integer(0), nil},
@@ -37,13 +37,13 @@ var validCases = []struct {
 	val interface{}
 	err error
 }{
-	0:  {[]byte{'+', '\r', '\n'}, SimpleString{}, nil},
-	1:  {[]byte{'+', 'a', '\r', '\n'}, SimpleString{'a'}, nil},
-	2:  {[]byte{'+', 'O', 'K', '\r', '\n'}, SimpleString{'O', 'K'}, nil},
+	0:  {[]byte{'+', '\r', '\n'}, SimpleString(""), nil},
+	1:  {[]byte{'+', 'a', '\r', '\n'}, SimpleString("a"), nil},
+	2:  {[]byte{'+', 'O', 'K', '\r', '\n'}, SimpleString("OK"), nil},
 	3:  {[]byte("+ceci n'est pas un string\r\n"), SimpleString("ceci n'est pas un string"), nil},
-	4:  {[]byte{'-', '\r', '\n'}, Error{}, nil},
-	5:  {[]byte{'-', 'a', '\r', '\n'}, Error{'a'}, nil},
-	6:  {[]byte{'-', 'K', 'O', '\r', '\n'}, Error{'K', 'O'}, nil},
+	4:  {[]byte{'-', '\r', '\n'}, Error(""), nil},
+	5:  {[]byte{'-', 'a', '\r', '\n'}, Error("a"), nil},
+	6:  {[]byte{'-', 'K', 'O', '\r', '\n'}, Error("KO"), nil},
 	7:  {[]byte("-ceci n'est pas un string\r\n"), Error("ceci n'est pas un string"), nil},
 	8:  {[]byte(":1\r\n"), Integer(1), nil},
 	9:  {[]byte(":123\r\n"), Integer(123), nil},
@@ -51,7 +51,7 @@ var validCases = []struct {
 	11: {[]byte("$0\r\n\r\n"), BulkString(""), nil},
 	12: {[]byte("$24\r\nceci n'est pas un string\r\n"), BulkString("ceci n'est pas un string"), nil},
 	13: {[]byte("$51\r\nceci n'est pas un string\r\navec\rdes\nsauts\r\nde\x00ligne.\r\n"), BulkString("ceci n'est pas un string\r\navec\rdes\nsauts\r\nde\x00ligne."), nil},
-	14: {[]byte("$-1\r\n"), BulkString(nil), nil},
+	14: {[]byte("$-1\r\n"), nil, nil},
 	15: {[]byte("*0\r\n"), Array{}, nil},
 	16: {[]byte("*1\r\n:10\r\n"), Array{Integer(10)}, nil},
 	17: {[]byte("*-1\r\n"), Array(nil), nil},
@@ -59,7 +59,7 @@ var validCases = []struct {
 		Array{SimpleString("string"), Error("error"), Integer(-2345)}, nil},
 	19: {[]byte("*5\r\n+string\r\n-error\r\n:-2345\r\n$4\r\nallo\r\n*2\r\n$0\r\n\r\n$-1\r\n"),
 		Array{SimpleString("string"), Error("error"), Integer(-2345), BulkString("allo"),
-			Array{BulkString(""), BulkString(nil)}}, nil},
+			Array{BulkString(""), nil}}, nil},
 }
 
 func TestDecode(t *testing.T) {
@@ -96,7 +96,7 @@ func assertSimpleString(t *testing.T, i int, got SimpleString, exp interface{}) 
 		t.Errorf("%d: expected a %T, got %T", i, exp, got)
 		return
 	}
-	if bytes.Compare(got, expv) != 0 {
+	if got != expv {
 		t.Errorf("%d: expected output %X (%q), got %X (%q)", i, expv, string(expv), got, string(got))
 	}
 }
@@ -107,7 +107,7 @@ func assertError(t *testing.T, i int, got Error, exp interface{}) {
 		t.Errorf("%d: expected a %T, got %T", i, exp, got)
 		return
 	}
-	if bytes.Compare(got, expv) != 0 {
+	if got != expv {
 		t.Errorf("%d: expected output %X (%q), got %X (%q)", i, expv, string(expv), got, string(got))
 	}
 }
@@ -129,7 +129,7 @@ func assertBulkString(t *testing.T, i int, got BulkString, exp interface{}) {
 		t.Errorf("%d: expected a %T, got %T", i, exp, got)
 		return
 	}
-	if bytes.Compare(got, expv) != 0 {
+	if got != expv {
 		t.Errorf("%d: expected output %X (%q), got %X (%q)", i, expv, string(expv), got, string(got))
 	}
 }

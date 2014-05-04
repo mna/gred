@@ -41,26 +41,14 @@ func (i Integer) String() string {
 
 // Error represents an error string as defined by the RESP. It cannot
 // contain \r or \n characters.
-type Error []byte
-
-func (e Error) String() string {
-	return string(e)
-}
+type Error string
 
 // SimpleString represents a simple string as defined by the RESP. It
 // cannot contain \r or \n characters.
-type SimpleString []byte
-
-func (s SimpleString) String() string {
-	return string(s)
-}
+type SimpleString string
 
 // BulkString represents a binary-safe string as defined by the RESP.
-type BulkString []byte
-
-func (b BulkString) String() string {
-	return string(b)
-}
+type BulkString string
 
 // Array represents an array of values, as defined by the RESP.
 type Array []interface{}
@@ -166,11 +154,11 @@ func decodeArray(r *bufio.Reader) (Array, int, error) {
 
 // decodeBulkString decodes the byte slice as a binary-safe string. The
 // '$' prefix is assumed to be already consumed.
-func decodeBulkString(r *bufio.Reader) (BulkString, int, error) {
+func decodeBulkString(r *bufio.Reader) (interface{}, int, error) {
 	// First comes the length of the bulk string, an integer
 	cnt, n, err := decodeInteger(r)
 	if err != nil {
-		return nil, n, err
+		return "", n, err
 	}
 	switch {
 	case cnt == -1:
@@ -187,15 +175,15 @@ func decodeBulkString(r *bufio.Reader) (BulkString, int, error) {
 		if nb < int(cnt)+2 {
 			return nil, n + nb, ErrInvalidBulkString
 		}
-		return BulkString(buf[:nb-2]), nb + n, err
+		return string(buf[:nb-2]), nb + n, err
 	}
 }
 
 // decodeInteger decodes the byte slice as a singed 64bit integer. The
 // ':' prefix is assumed to be already consumed.
-func decodeInteger(r *bufio.Reader) (val Integer, n int, err error) {
+func decodeInteger(r *bufio.Reader) (val int64, n int, err error) {
 	var cr bool
-	var sign Integer = 1
+	var sign int64 = 1
 
 loop:
 	for {
@@ -214,7 +202,7 @@ loop:
 			break loop
 
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-			val = val*10 + Integer(ch-'0')
+			val = val*10 + int64(ch-'0')
 
 		case '-':
 			if n == 1 {
@@ -237,19 +225,19 @@ loop:
 
 // decodeSimpleString decodes the byte slice as a SimpleString. The
 // '+' prefix is assumed to be already consumed.
-func decodeSimpleString(r *bufio.Reader) (SimpleString, int, error) {
+func decodeSimpleString(r *bufio.Reader) (interface{}, int, error) {
 	v, err := r.ReadBytes('\r')
 	if err != nil {
 		return nil, len(v), err
 	}
 	// Presume next byte was \n
 	r.ReadByte()
-	return SimpleString(v[:len(v)-1]), len(v) + 1, nil
+	return string(v[:len(v)-1]), len(v) + 1, nil
 }
 
 // decodeError decodes the byte slice as an Error. The '-' prefix
 // is assumed to be already consumed.
-func decodeError(r *bufio.Reader) (Error, int, error) {
+func decodeError(r *bufio.Reader) (interface{}, int, error) {
 	val, n, err := decodeSimpleString(r)
-	return Error(val), n, err
+	return val, n, err
 }
