@@ -3,12 +3,15 @@
 // See http://redis.io/topics/protocol for the reference.
 package resp
 
-import "errors"
+import (
+	"bufio"
+	"bytes"
+	"errors"
+	"fmt"
+	"io"
+)
 
 var (
-	// ErrNoData is returned if an empty slice was passed to a Decode function.
-	ErrNoData = errors.New("resp: no data")
-
 	// ErrInvalidPrefix is returned if the data contains an unrecognized prefix.
 	ErrInvalidPrefix = errors.New("resp: invalid prefix")
 
@@ -32,25 +35,49 @@ var (
 // Integer represents a signed, 64-bit integer as defined by the RESP.
 type Integer int64
 
+func (i Integer) String() string {
+	return fmt.Sprintf("%d", i)
+}
+
 // Error represents an error string as defined by the RESP. It cannot
 // contain \r or \n characters.
 type Error []byte
+
+func (e Error) String() string {
+	return string(e)
+}
 
 // SimpleString represents a simple string as defined by the RESP. It
 // cannot contain \r or \n characters.
 type SimpleString []byte
 
+func (s SimpleString) String() string {
+	return string(s)
+}
+
 // BulkString represents a binary-safe string as defined by the RESP.
 type BulkString []byte
+
+func (b BulkString) String() string {
+	return string(b)
+}
 
 // Array represents an array of values, as defined by the RESP.
 type Array []interface{}
 
+func (a Array) String() string {
+	var buf bytes.Buffer
+	for i, v := range a {
+		buf.WriteString(fmt.Sprintf("[%2d] %[2]s (%[2]T)\n", i, v))
+	}
+	return buf.String()
+}
+
 // DecodeRequest decodes the provided byte slice and returns the array
 // representing the request. If the encoded value is not an array, it
 // returns ErrNotAnArray.
-func DecodeRequest(b []byte) (Array, error) {
-	val, _, err := decodeValue(b)
+func DecodeRequest(r io.Reader) (Array, error) {
+	val, err := Decode(r)
 	if err != nil {
 		return nil, err
 	}
@@ -62,34 +89,35 @@ func DecodeRequest(b []byte) (Array, error) {
 }
 
 // Decode decodes the provided byte slice and returns the parsed value.
-func Decode(b []byte) (interface{}, error) {
-	val, _, err := decodeValue(b)
+func Decode(r io.Reader) (interface{}, error) {
+	br := bufio.NewReader(r)
+	val, _, err := decodeValue(br)
 	return val, err
 }
 
 // decodeValue parses the byte slice and decodes the value based on its
 // prefix, as defined by the RESP protocol.
-func decodeValue(b []byte) (val interface{}, n int, err error) {
-	if len(b) == 0 {
-		return nil, 0, ErrNoData
+func decodeValue(r *bufio.Reader) (val interface{}, n int, err error) {
+	ch, err := r.ReadByte()
+	if err != nil {
+		return val, 0, err
 	}
-
-	switch b[0] {
+	switch ch {
 	case '+':
 		// Simple string
-		val, n, err = decodeSimpleString(b[1:])
+		val, n, err = decodeSimpleString(r)
 	case '-':
 		// Error
-		val, n, err = decodeError(b[1:])
+		val, n, err = decodeError(r)
 	case ':':
 		// Integer
-		val, n, err = decodeInteger(b[1:])
+		val, n, err = decodeInteger(r)
 	case '$':
 		// Bulk string
-		val, n, err = decodeBulkString(b[1:])
+		val, n, err = decodeBulkString(r)
 	case '*':
 		// Array
-		val, n, err = decodeArray(b[1:])
+		val, n, err = decodeArray(r)
 	default:
 		err = ErrInvalidPrefix
 	}
@@ -100,9 +128,9 @@ func decodeValue(b []byte) (val interface{}, n int, err error) {
 
 // decodeArray decodes the byte slice as an array. It assumes the
 // '*' prefix is already consumed.
-func decodeArray(b []byte) (Array, int, error) {
+func decodeArray(r *bufio.Reader) (Array, int, error) {
 	// First comes the number of elements in the array
-	cnt, n, err := decodeInteger(b)
+	cnt, n, err := decodeInteger(r)
 	if err != nil {
 		return nil, n, err
 	}
@@ -125,7 +153,7 @@ func decodeArray(b []byte) (Array, int, error) {
 
 		// Decode each value
 		for i := 0; i < int(cnt); i++ {
-			val, nn, err := decodeValue(b[n:])
+			val, nn, err := decodeValue(r)
 			n += nn
 			if err != nil {
 				return nil, n, err
@@ -138,9 +166,9 @@ func decodeArray(b []byte) (Array, int, error) {
 
 // decodeBulkString decodes the byte slice as a binary-safe string. The
 // '$' prefix is assumed to be already consumed.
-func decodeBulkString(b []byte) (BulkString, int, error) {
+func decodeBulkString(r *bufio.Reader) (BulkString, int, error) {
 	// First comes the length of the bulk string, an integer
-	cnt, n, err := decodeInteger(b)
+	cnt, n, err := decodeInteger(r)
 	if err != nil {
 		return nil, n, err
 	}
@@ -152,24 +180,29 @@ func decodeBulkString(b []byte) (BulkString, int, error) {
 	case cnt < -1:
 		return nil, n, ErrInvalidBulkString
 
-	case len(b) < int(cnt)+n+2:
-		return nil, n, ErrInvalidBulkString
-
 	default:
 		// Then the string is cnt long, and bytes read is cnt+n+2 (for ending CRLF)
-		return BulkString(b[n : int(cnt)+n]), int(cnt) + n + 2, nil
+		buf := make([]byte, cnt+2)
+		nb, err := r.Read(buf)
+		if nb < int(cnt)+2 {
+			return nil, n + nb, ErrInvalidBulkString
+		}
+		return BulkString(buf[:nb-2]), nb + n, err
 	}
 }
 
 // decodeInteger decodes the byte slice as a singed 64bit integer. The
 // ':' prefix is assumed to be already consumed.
-func decodeInteger(b []byte) (val Integer, n int, err error) {
+func decodeInteger(r *bufio.Reader) (val Integer, n int, err error) {
 	var cr bool
 	var sign Integer = 1
 
 loop:
-	for i := 0; i < len(b); i++ {
-		ch := b[i]
+	for {
+		ch, err := r.ReadByte()
+		if err != nil {
+			return 0, n, err
+		}
 		n++
 
 		switch ch {
@@ -184,7 +217,7 @@ loop:
 			val = val*10 + Integer(ch-'0')
 
 		case '-':
-			if i == 0 {
+			if n == 1 {
 				sign = -1
 				continue
 			}
@@ -198,34 +231,25 @@ loop:
 		return 0, n, ErrMissingCRLF
 	}
 	// Presume next byte was \n
+	r.ReadByte()
 	return sign * val, n + 1, nil
 }
 
 // decodeSimpleString decodes the byte slice as a SimpleString. The
 // '+' prefix is assumed to be already consumed.
-func decodeSimpleString(b []byte) (SimpleString, int, error) {
-	end := -1
-	n := 0
-	for i := 0; i < len(b); i++ {
-		ch := b[i]
-		n++
-		if ch == '\r' {
-			// Simple strings cannot contain \r nor \n, so at the first \r we know
-			// the string is over.
-			end = i
-			break
-		}
-	}
-	if end == -1 {
-		return nil, n, ErrMissingCRLF
+func decodeSimpleString(r *bufio.Reader) (SimpleString, int, error) {
+	v, err := r.ReadBytes('\r')
+	if err != nil {
+		return nil, len(v), err
 	}
 	// Presume next byte was \n
-	return SimpleString(b[:end]), n + 1, nil
+	r.ReadByte()
+	return SimpleString(v[:len(v)-1]), len(v) + 1, nil
 }
 
 // decodeError decodes the byte slice as an Error. The '-' prefix
 // is assumed to be already consumed.
-func decodeError(b []byte) (Error, int, error) {
-	val, n, err := decodeSimpleString(b)
+func decodeError(r *bufio.Reader) (Error, int, error) {
+	val, n, err := decodeSimpleString(r)
 	return Error(val), n, err
 }

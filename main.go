@@ -5,10 +5,13 @@ import (
 	"log"
 	"net"
 
+	"github.com/PuerkitoBio/gred/db"
 	"github.com/PuerkitoBio/gred/resp"
 )
 
 func main() {
+	d := db.New(0)
+
 	// Listen on TCP port 6379 on all interfaces.
 	l, err := net.Listen("tcp", ":6379")
 	if err != nil {
@@ -27,21 +30,25 @@ func main() {
 		go func(c net.Conn) {
 			log.Println("request")
 			for {
-				buf := make([]byte, 4096)
-				n, err := c.Read(buf)
+				ar, err := resp.DecodeRequest(c)
 				if err != nil {
 					log.Println(err)
 					if err == io.EOF {
 						break
 					}
 				}
-				log.Println(string(buf), n)
-				ar, err := resp.DecodeRequest(buf)
+				log.Printf("%s\n", ar)
+				if len(ar) > 0 {
+					d.Do(ar[0].(BulkString), ar[1:]...)
+				}
+
+				_, err = c.Write([]byte("+OK\r\n"))
 				if err != nil {
 					log.Println(err)
+					if err == io.ErrClosedPipe {
+						break
+					}
 				}
-				log.Printf("%#v\n", ar)
-				c.Write([]byte("+OK\r\n"))
 			}
 			// Shut down the connection.
 			c.Close()
