@@ -61,15 +61,9 @@ func encodeArray(w io.Writer, v Array) error {
 
 // encodeBulkString encodes a bulk string to w.
 func encodeBulkString(w io.Writer, v BulkString) error {
-	// First encode the length
 	n := len(v)
-	err := encodePrefixed(w, '$', strconv.Itoa(n))
-	if err != nil {
-		return err
-	}
-	// Then the string
-	_, err = w.Write(append([]byte(v), '\r', '\n'))
-	return err
+	data := strconv.Itoa(n) + "\r\n" + string(v)
+	return encodePrefixed(w, '$', data)
 }
 
 // encodeInteger encodes an integer value to w.

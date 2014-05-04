@@ -21,3 +21,38 @@ func TestEncode(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkEncodeSimpleString(b *testing.B) {
+	var buf bytes.Buffer
+	for i := 0; i < b.N; i++ {
+		Encode(&buf, validCases[3].val)
+	}
+}
+
+func BenchmarkEncodeError(b *testing.B) {
+	var buf bytes.Buffer
+	for i := 0; i < b.N; i++ {
+		Encode(&buf, validCases[7].val)
+	}
+}
+
+func BenchmarkEncodeInteger(b *testing.B) {
+	var buf bytes.Buffer
+	for i := 0; i < b.N; i++ {
+		Encode(&buf, validCases[10].val)
+	}
+}
+
+func BenchmarkEncodeBulkString(b *testing.B) {
+	var buf bytes.Buffer
+	for i := 0; i < b.N; i++ {
+		Encode(&buf, validCases[13].val)
+	}
+}
+
+func BenchmarkEncodeArray(b *testing.B) {
+	var buf bytes.Buffer
+	for i := 0; i < b.N; i++ {
+		Encode(&buf, validCases[19].val)
+	}
+}
