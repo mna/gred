@@ -180,7 +180,7 @@ func decodeBulkString(r *bufio.Reader) (interface{}, int, error) {
 	// First comes the length of the bulk string, an integer
 	cnt, n, err := decodeInteger(r)
 	if err != nil {
-		return "", n, err
+		return nil, n, err
 	}
 	switch {
 	case cnt == -1:
@@ -260,6 +260,5 @@ func decodeSimpleString(r *bufio.Reader) (interface{}, int, error) {
 // decodeError decodes the byte slice as an Error. The '-' prefix
 // is assumed to be already consumed.
 func decodeError(r *bufio.Reader) (interface{}, int, error) {
-	val, n, err := decodeSimpleString(r)
-	return val, n, err
+	return decodeSimpleString(r)
 }

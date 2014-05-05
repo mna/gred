@@ -3,90 +3,58 @@ package db
 import (
 	"errors"
 	"sync"
-
-	"github.com/PuerkitoBio/gred/resp"
 )
+
+type cmdFunc func(db *Database, args ...string) (interface{}, error)
+
+type cmdDef struct {
+	fn    cmdFunc
+	nArgs int
+}
+
+var cmds = map[string]cmdDef{
+	"get":      cmdDef{(*Database).get, 1},
+	"set":      cmdDef{(*Database).set, 2},
+	"append":   cmdDef{(*Database).append, 2},
+	"getrange": cmdDef{(*Database).getRange, 3},
+	"substr":   cmdDef{(*Database).getRange, 3},
+}
 
 var (
+	// ErrInvalidCommand is returned when a malformed command is received.
 	ErrInvalidCommand = errors.New("db: invalid command")
-	ErrMissingArg     = errors.New("db: missing argument")
-	ErrNilSuccess     = errors.New("db: (nil)")
+
+	// ErrMissingArg is returned if there are not enough arguments to call
+	// the specified command.
+	ErrMissingArg = errors.New("db: missing argument")
+
+	// ErrNilSuccess is a sentinel value to indicate the success of a command,
+	// and that the nil value should be returned.
+	ErrNilSuccess = errors.New("db: (nil)")
 )
 
+// Database represents a Redis database, identified by its index.
 type Database struct {
 	ix   int
 	mu   sync.RWMutex
-	keys map[string]*Key
+	keys map[string]*key
 }
 
+// NewDB creates a new Database identified by the specified index.
 func NewDB(index int) *Database {
 	return &Database{
 		ix:   index,
-		keys: make(map[string]*Key),
+		keys: make(map[string]*key),
 	}
 }
 
+// Do executes the command cmd with the specified arguments args.
 func (d *Database) Do(cmd string, args ...string) (interface{}, error) {
-	switch cmd {
-	case "set":
-		if len(args) < 2 {
+	if def, ok := cmds[cmd]; ok {
+		if len(args) < def.nArgs {
 			return nil, ErrMissingArg
 		}
-		d.Set(args[0], args[1])
-		return nil, nil
-
-	case "get":
-		if len(args) < 1 {
-			return nil, ErrMissingArg
-		}
-		val, err := d.Get(args[0])
-		return resp.BulkString(val), err
-
-	default:
-		return nil, ErrInvalidCommand
+		return def.fn(d, args...)
 	}
-}
-
-func (d *Database) Get(k string) (string, error) {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
-	if key, ok := d.keys[k]; ok {
-		return key.Get(), nil
-	}
-	return "", ErrNilSuccess
-}
-
-func (d *Database) Set(k, v string) {
-	d.mu.RLock()
-	if key, ok := d.keys[k]; !ok {
-		// Key does not exist yet, must create the key
-		d.mu.RUnlock()
-		d.mu.Lock()
-		defer d.mu.Unlock()
-		key = &Key{val: v}
-		d.keys[k] = key
-
-	} else {
-		// Key already exists, set the new value
-		defer d.mu.RUnlock()
-		key.Set(v)
-	}
-}
-
-type Key struct {
-	mu  sync.RWMutex
-	val string
-}
-
-func (k *Key) Get() string {
-	k.mu.RLock()
-	defer k.mu.RUnlock()
-	return k.val
-}
-
-func (k *Key) Set(v string) {
-	k.mu.Lock()
-	defer k.mu.Unlock()
-	k.val = v
+	return nil, ErrInvalidCommand
 }

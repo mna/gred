@@ -21,8 +21,12 @@ func encodeValue(w io.Writer, v interface{}) error {
 		return encodeSimpleString(w, v)
 	case Error:
 		return encodeError(w, v)
+	case int64:
+		return encodeInteger(w, Integer(v))
 	case Integer:
 		return encodeInteger(w, v)
+	case string:
+		return encodeBulkString(w, BulkString(v))
 	case BulkString:
 		return encodeBulkString(w, v)
 	case Array:

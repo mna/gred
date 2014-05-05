@@ -7,10 +7,27 @@ import (
 
 func TestEncode(t *testing.T) {
 	var buf bytes.Buffer
+	var err error
 
 	for i, c := range validCases {
 		buf.Reset()
-		err := Encode(&buf, c.val)
+		// Convert to correct value, based on expectation
+		switch c.enc[0] {
+		case '+':
+			err = Encode(&buf, SimpleString(c.val.(string)))
+		case '-':
+			err = Encode(&buf, Error(c.val.(string)))
+		case '$':
+			if c.val != nil {
+				err = Encode(&buf, BulkString(c.val.(string)))
+			} else {
+				err = Encode(&buf, c.val)
+			}
+		case ':':
+			err = Encode(&buf, Integer(c.val.(int64)))
+		default:
+			err = Encode(&buf, c.val)
+		}
 		if err != nil {
 			t.Errorf("%d: got error %s", i, err)
 			continue
