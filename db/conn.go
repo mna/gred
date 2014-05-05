@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bufio"
 	"errors"
 	"io"
 	"net"
@@ -16,11 +17,26 @@ var (
 	defaultDb = NewDB(0)
 )
 
+type connCmdFunc func(c *Conn, args ...string) error
+
+type connCmdDef struct {
+	fn    connCmdFunc
+	nArgs int
+}
+
+var connCmds = map[string]connCmdDef{
+	"ping": connCmdDef{(*Conn).ping, 0},
+	"echo": connCmdDef{(*Conn).echo, 1},
+}
+
+// Conn represents a network connection to the server.
 type Conn struct {
 	c  net.Conn
 	db *Database
 }
 
+// NewConn creates a new Conn for the underlying net.Conn network
+// connection.
 func NewConn(c net.Conn) *Conn {
 	return &Conn{
 		c:  c,
@@ -28,12 +44,15 @@ func NewConn(c net.Conn) *Conn {
 	}
 }
 
+// Handle handles a connection to the server, and processes its requests.
 func (c *Conn) Handle() error {
 	defer c.c.Close()
 
+	br := bufio.NewReader(c.c)
+
 	for {
 		// Get the request
-		ar, err := resp.DecodeRequest(c.c)
+		ar, err := resp.DecodeRequest(br)
 		if err != nil {
 			// Network error, return
 			if err == io.EOF || err == io.ErrClosedPipe {
@@ -56,18 +75,31 @@ func (c *Conn) Handle() error {
 	}
 }
 
+func (c *Conn) ping(args ...string) error {
+	// Special case for ping, avoid allocation and return the pong predefined response.
+	_, err := c.c.Write(pong)
+	return err
+}
+
+func (c *Conn) echo(args ...string) error {
+	err := resp.Encode(c.c, args[0])
+	return err
+}
+
+// Do executes a given command on the connection.
 func (c *Conn) Do(cmd string, args ...string) error {
 	var res interface{}
 	var err error
 
-	switch lc := strings.ToLower(cmd); lc {
-	case "ping":
-		// Special case for ping, avoid allocation and return the pong predefined response.
-		_, err = c.c.Write(pong)
-		return err
-
-	default:
-		res, err = c.db.Do(lc, args...)
+	cmd = strings.ToLower(cmd)
+	if def, ok := connCmds[cmd]; ok {
+		if len(args) != def.nArgs {
+			err = ErrMissingArg
+		} else {
+			err = def.fn(c, args...)
+		}
+	} else {
+		res, err = c.db.Do(cmd, args...)
 	}
 
 	// If the command returned an error, send it back to the client

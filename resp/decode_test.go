@@ -64,7 +64,7 @@ var validCases = []struct {
 
 func TestDecode(t *testing.T) {
 	for i, c := range append(validCases, decodeErrCases...) {
-		got, err := Decode(bytes.NewReader(c.enc))
+		got, err := Decode(bytes.NewBuffer(c.enc))
 		if err != c.err {
 			t.Errorf("%d: expected error %v, got %v", i, c.err, err)
 		}
@@ -89,7 +89,7 @@ func TestDecodeRequest(t *testing.T) {
 	}
 
 	for i, c := range cases {
-		buf := bytes.NewReader(c.raw)
+		buf := bytes.NewBuffer(c.raw)
 		got, err := DecodeRequest(buf)
 		if err != c.err {
 			t.Errorf("%d: expected error %v, got %v", i, c.err, err)
@@ -156,7 +156,7 @@ func assertArray(t *testing.T, i int, got Array, exp interface{}) {
 }
 
 func BenchmarkDecodeSimpleString(b *testing.B) {
-	r := bytes.NewReader(validCases[3].enc)
+	r := bytes.NewBuffer(validCases[3].enc)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Decode(r)
@@ -164,7 +164,7 @@ func BenchmarkDecodeSimpleString(b *testing.B) {
 }
 
 func BenchmarkDecodeError(b *testing.B) {
-	r := bytes.NewReader(validCases[7].enc)
+	r := bytes.NewBuffer(validCases[7].enc)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Decode(r)
@@ -172,7 +172,7 @@ func BenchmarkDecodeError(b *testing.B) {
 }
 
 func BenchmarkDecodeInteger(b *testing.B) {
-	r := bytes.NewReader(validCases[10].enc)
+	r := bytes.NewBuffer(validCases[10].enc)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Decode(r)
@@ -180,7 +180,7 @@ func BenchmarkDecodeInteger(b *testing.B) {
 }
 
 func BenchmarkDecodeBulkString(b *testing.B) {
-	r := bytes.NewReader(validCases[13].enc)
+	r := bytes.NewBuffer(validCases[13].enc)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Decode(r)
@@ -188,7 +188,7 @@ func BenchmarkDecodeBulkString(b *testing.B) {
 }
 
 func BenchmarkDecodeArray(b *testing.B) {
-	r := bytes.NewReader(validCases[19].enc)
+	r := bytes.NewBuffer(validCases[19].enc)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Decode(r)

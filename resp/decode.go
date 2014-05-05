@@ -4,7 +4,6 @@
 package resp
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -35,6 +34,12 @@ var (
 	// the decoded value is not an array containing only bulk strings, and at least 1 element.
 	ErrInvalidRequest = errors.New("resp: invalid request, must be an array of bulk strings with at least one element")
 )
+
+type ByteReader interface {
+	io.Reader
+	io.ByteReader
+	ReadBytes(byte) ([]byte, error)
+}
 
 // Integer represents a signed, 64-bit integer as defined by the RESP.
 type Integer int64
@@ -68,7 +73,7 @@ func (a Array) String() string {
 // DecodeRequest decodes the provided byte slice and returns the array
 // representing the request. If the encoded value is not an array, it
 // returns ErrNotAnArray, and if it is not a valid request, it returns ErrInvalidRequest.
-func DecodeRequest(r io.Reader) ([]string, error) {
+func DecodeRequest(r ByteReader) ([]string, error) {
 	// Decode the value
 	val, err := Decode(r)
 	if err != nil {
@@ -99,15 +104,14 @@ func DecodeRequest(r io.Reader) ([]string, error) {
 }
 
 // Decode decodes the provided byte slice and returns the parsed value.
-func Decode(r io.Reader) (interface{}, error) {
-	br := bufio.NewReader(r)
-	val, _, err := decodeValue(br)
+func Decode(r ByteReader) (interface{}, error) {
+	val, _, err := decodeValue(r)
 	return val, err
 }
 
 // decodeValue parses the byte slice and decodes the value based on its
 // prefix, as defined by the RESP protocol.
-func decodeValue(r *bufio.Reader) (val interface{}, n int, err error) {
+func decodeValue(r ByteReader) (val interface{}, n int, err error) {
 	ch, err := r.ReadByte()
 	if err != nil {
 		return val, 0, err
@@ -138,7 +142,7 @@ func decodeValue(r *bufio.Reader) (val interface{}, n int, err error) {
 
 // decodeArray decodes the byte slice as an array. It assumes the
 // '*' prefix is already consumed.
-func decodeArray(r *bufio.Reader) (Array, int, error) {
+func decodeArray(r ByteReader) (Array, int, error) {
 	// First comes the number of elements in the array
 	cnt, n, err := decodeInteger(r)
 	if err != nil {
@@ -176,7 +180,7 @@ func decodeArray(r *bufio.Reader) (Array, int, error) {
 
 // decodeBulkString decodes the byte slice as a binary-safe string. The
 // '$' prefix is assumed to be already consumed.
-func decodeBulkString(r *bufio.Reader) (interface{}, int, error) {
+func decodeBulkString(r ByteReader) (interface{}, int, error) {
 	// First comes the length of the bulk string, an integer
 	cnt, n, err := decodeInteger(r)
 	if err != nil {
@@ -192,18 +196,26 @@ func decodeBulkString(r *bufio.Reader) (interface{}, int, error) {
 
 	default:
 		// Then the string is cnt long, and bytes read is cnt+n+2 (for ending CRLF)
-		buf := make([]byte, cnt+2)
-		nb, err := r.Read(buf)
-		if nb < int(cnt)+2 {
-			return nil, n + nb, ErrInvalidBulkString
+		need := cnt + 2
+		got := 0
+		buf := make([]byte, need)
+		for {
+			nb, err := r.Read(buf[got:])
+			if err != nil {
+				return nil, n + nb, err
+			}
+			got += nb
+			if int64(got) == need {
+				break
+			}
 		}
-		return string(buf[:nb-2]), nb + n, err
+		return string(buf[:got-2]), got + n, err
 	}
 }
 
 // decodeInteger decodes the byte slice as a singed 64bit integer. The
 // ':' prefix is assumed to be already consumed.
-func decodeInteger(r *bufio.Reader) (val int64, n int, err error) {
+func decodeInteger(r ByteReader) (val int64, n int, err error) {
 	var cr bool
 	var sign int64 = 1
 
@@ -247,7 +259,7 @@ loop:
 
 // decodeSimpleString decodes the byte slice as a SimpleString. The
 // '+' prefix is assumed to be already consumed.
-func decodeSimpleString(r *bufio.Reader) (interface{}, int, error) {
+func decodeSimpleString(r ByteReader) (interface{}, int, error) {
 	v, err := r.ReadBytes('\r')
 	if err != nil {
 		return nil, len(v), err
@@ -259,6 +271,6 @@ func decodeSimpleString(r *bufio.Reader) (interface{}, int, error) {
 
 // decodeError decodes the byte slice as an Error. The '-' prefix
 // is assumed to be already consumed.
-func decodeError(r *bufio.Reader) (interface{}, int, error) {
+func decodeError(r ByteReader) (interface{}, int, error) {
 	return decodeSimpleString(r)
 }
