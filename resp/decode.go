@@ -35,37 +35,20 @@ var (
 	ErrInvalidRequest = errors.New("resp: invalid request, must be an array of bulk strings with at least one element")
 )
 
-type ByteReader interface {
+type BytesReader interface {
 	io.Reader
 	io.ByteReader
 	ReadBytes(byte) ([]byte, error)
 }
 
-// Integer represents a signed, 64-bit integer as defined by the RESP.
-type Integer int64
-
-func (i Integer) String() string {
-	return fmt.Sprintf("%d", i)
-}
-
-// Error represents an error string as defined by the RESP. It cannot
-// contain \r or \n characters.
-type Error string
-
-// SimpleString represents a simple string as defined by the RESP. It
-// cannot contain \r or \n characters.
-type SimpleString string
-
-// BulkString represents a binary-safe string as defined by the RESP.
-type BulkString string
-
 // Array represents an array of values, as defined by the RESP.
 type Array []interface{}
 
+// String is the Stringer implementation for the Array.
 func (a Array) String() string {
 	var buf bytes.Buffer
 	for i, v := range a {
-		buf.WriteString(fmt.Sprintf("[%2d] %[2]s (%[2]T)\n", i, v))
+		buf.WriteString(fmt.Sprintf("[%2d] %[2]v (%[2]T)\n", i, v))
 	}
 	return buf.String()
 }
@@ -73,7 +56,7 @@ func (a Array) String() string {
 // DecodeRequest decodes the provided byte slice and returns the array
 // representing the request. If the encoded value is not an array, it
 // returns ErrNotAnArray, and if it is not a valid request, it returns ErrInvalidRequest.
-func DecodeRequest(r ByteReader) ([]string, error) {
+func DecodeRequest(r BytesReader) ([]string, error) {
 	// Decode the value
 	val, err := Decode(r)
 	if err != nil {
@@ -104,62 +87,61 @@ func DecodeRequest(r ByteReader) ([]string, error) {
 }
 
 // Decode decodes the provided byte slice and returns the parsed value.
-func Decode(r ByteReader) (interface{}, error) {
-	val, _, err := decodeValue(r)
+func Decode(r BytesReader) (interface{}, error) {
+	val, err := decodeValue(r)
 	return val, err
 }
 
 // decodeValue parses the byte slice and decodes the value based on its
 // prefix, as defined by the RESP protocol.
-func decodeValue(r ByteReader) (val interface{}, n int, err error) {
+func decodeValue(r BytesReader) (val interface{}, err error) {
 	ch, err := r.ReadByte()
 	if err != nil {
-		return val, 0, err
+		return val, err
 	}
 	switch ch {
 	case '+':
 		// Simple string
-		val, n, err = decodeSimpleString(r)
+		val, err = decodeSimpleString(r)
 	case '-':
 		// Error
-		val, n, err = decodeError(r)
+		val, err = decodeError(r)
 	case ':':
 		// Integer
-		val, n, err = decodeInteger(r)
+		val, err = decodeInteger(r)
 	case '$':
 		// Bulk string
-		val, n, err = decodeBulkString(r)
+		val, err = decodeBulkString(r)
 	case '*':
 		// Array
-		val, n, err = decodeArray(r)
+		val, err = decodeArray(r)
 	default:
 		err = ErrInvalidPrefix
 	}
 
-	// n+1 for the prefix consumed by this func
-	return val, n + 1, err
+	return val, err
 }
 
 // decodeArray decodes the byte slice as an array. It assumes the
 // '*' prefix is already consumed.
-func decodeArray(r ByteReader) (Array, int, error) {
+func decodeArray(r BytesReader) (Array, error) {
 	// First comes the number of elements in the array
-	cnt, n, err := decodeInteger(r)
+	cnt, err := decodeInteger(r)
 	if err != nil {
-		return nil, n, err
+		return nil, err
 	}
 	switch {
 	case cnt == -1:
 		// Nil array
-		return nil, n, nil
+		return nil, nil
 
 	case cnt == 0:
 		// Empty, but allocated, array
-		return Array{}, n, nil
+		return Array{}, nil
 
 	case cnt < 0:
 		// Invalid length
-		return nil, n, ErrInvalidArray
+		return nil, ErrInvalidArray
 
 	default:
 		// Allocate the array
@@ -167,32 +149,31 @@ func decodeArray(r ByteReader) (Array, int, error) {
 
 		// Decode each value
 		for i := 0; i < int(cnt); i++ {
-			val, nn, err := decodeValue(r)
-			n += nn
+			val, err := decodeValue(r)
 			if err != nil {
-				return nil, n, err
+				return nil, err
 			}
 			ar[i] = val
 		}
-		return ar, n, nil
+		return ar, nil
 	}
 }
 
 // decodeBulkString decodes the byte slice as a binary-safe string. The
 // '$' prefix is assumed to be already consumed.
-func decodeBulkString(r ByteReader) (interface{}, int, error) {
+func decodeBulkString(r BytesReader) (interface{}, error) {
 	// First comes the length of the bulk string, an integer
-	cnt, n, err := decodeInteger(r)
+	cnt, err := decodeInteger(r)
 	if err != nil {
-		return nil, n, err
+		return nil, err
 	}
 	switch {
 	case cnt == -1:
 		// Special case to represent a nil bulk string
-		return nil, n, nil
+		return nil, nil
 
 	case cnt < -1:
-		return nil, n, ErrInvalidBulkString
+		return nil, ErrInvalidBulkString
 
 	default:
 		// Then the string is cnt long, and bytes read is cnt+n+2 (for ending CRLF)
@@ -202,28 +183,29 @@ func decodeBulkString(r ByteReader) (interface{}, int, error) {
 		for {
 			nb, err := r.Read(buf[got:])
 			if err != nil {
-				return nil, n + nb, err
+				return nil, ErrInvalidBulkString
 			}
 			got += nb
 			if int64(got) == need {
 				break
 			}
 		}
-		return string(buf[:got-2]), got + n, err
+		return string(buf[:got-2]), err
 	}
 }
 
 // decodeInteger decodes the byte slice as a singed 64bit integer. The
 // ':' prefix is assumed to be already consumed.
-func decodeInteger(r ByteReader) (val int64, n int, err error) {
+func decodeInteger(r BytesReader) (val int64, err error) {
 	var cr bool
 	var sign int64 = 1
+	var n int
 
 loop:
 	for {
 		ch, err := r.ReadByte()
 		if err != nil {
-			return 0, n, err
+			return 0, err
 		}
 		n++
 
@@ -245,32 +227,32 @@ loop:
 			}
 			fallthrough
 		default:
-			return 0, n, ErrInvalidInteger
+			return 0, ErrInvalidInteger
 		}
 	}
 
 	if !cr {
-		return 0, n, ErrMissingCRLF
+		return 0, ErrMissingCRLF
 	}
 	// Presume next byte was \n
 	r.ReadByte()
-	return sign * val, n + 1, nil
+	return sign * val, nil
 }
 
 // decodeSimpleString decodes the byte slice as a SimpleString. The
 // '+' prefix is assumed to be already consumed.
-func decodeSimpleString(r ByteReader) (interface{}, int, error) {
+func decodeSimpleString(r BytesReader) (interface{}, error) {
 	v, err := r.ReadBytes('\r')
 	if err != nil {
-		return nil, len(v), err
+		return nil, err
 	}
 	// Presume next byte was \n
 	r.ReadByte()
-	return string(v[:len(v)-1]), len(v) + 1, nil
+	return string(v[:len(v)-1]), nil
 }
 
 // decodeError decodes the byte slice as an Error. The '-' prefix
 // is assumed to be already consumed.
-func decodeError(r ByteReader) (interface{}, int, error) {
+func decodeError(r BytesReader) (interface{}, error) {
 	return decodeSimpleString(r)
 }

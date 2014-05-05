@@ -3,6 +3,7 @@ package resp
 import (
 	"bytes"
 	"io"
+	"reflect"
 	"testing"
 )
 
@@ -26,13 +27,13 @@ var decodeErrCases = []struct {
 	12: {[]byte("$6\nabc\r\n"), nil, ErrMissingCRLF},
 	13: {[]byte("$4\r\nabc\r\n"), nil, ErrInvalidBulkString},
 	14: {[]byte("$-3\r\n"), nil, ErrInvalidBulkString},
-	15: {[]byte("*1\n:10\r\n"), Array{}, ErrMissingCRLF},
+	15: {[]byte("*1\n:10\r\n"), Array(nil), ErrMissingCRLF},
 	16: {[]byte("*-3\r\n"), Array(nil), ErrInvalidArray},
 	17: {[]byte(":\r\n"), int64(0), nil},
 	18: {[]byte("$\r\n\r\n"), "", nil},
 }
 
-var validCases = []struct {
+var decodeValidCases = []struct {
 	enc []byte
 	val interface{}
 	err error
@@ -63,7 +64,7 @@ var validCases = []struct {
 }
 
 func TestDecode(t *testing.T) {
-	for i, c := range append(validCases, decodeErrCases...) {
+	for i, c := range append(decodeValidCases, decodeErrCases...) {
 		got, err := Decode(bytes.NewBuffer(c.enc))
 		if err != c.err {
 			t.Errorf("%d: expected error %v, got %v", i, c.err, err)
@@ -102,61 +103,17 @@ func TestDecodeRequest(t *testing.T) {
 }
 
 func assertValue(t *testing.T, i int, got, exp interface{}) {
-	switch tt := got.(type) {
-	case string:
-		assertString(t, i, tt, exp)
-	case int64:
-		assertInteger(t, i, tt, exp)
-	case Array:
-		assertArray(t, i, tt, exp)
-	case nil:
-		if exp != nil {
-			t.Errorf("%d: expected nil, got %v", i, exp)
-		}
-	default:
-		t.Errorf("%d: unknown value type %T", i, got)
+	tgot, texp := reflect.TypeOf(got), reflect.TypeOf(exp)
+	if tgot != texp {
+		t.Errorf("%d: expected type %s, got %s", i, texp, tgot)
 	}
-}
-
-func assertString(t *testing.T, i int, got string, exp interface{}) {
-	expv, ok := exp.(string)
-	if !ok {
-		t.Errorf("%d: expected a %T, got %T", i, exp, got)
-		return
-	}
-	if got != expv {
-		t.Errorf("%d: expected output %X (%q), got %X (%q)", i, expv, string(expv), got, string(got))
-	}
-}
-
-func assertInteger(t *testing.T, i int, got int64, exp interface{}) {
-	expv, ok := exp.(int64)
-	if !ok {
-		t.Errorf("%d: expected a %T, got %T", i, exp, got)
-		return
-	}
-	if expv != got {
-		t.Errorf("%d: expected output %d, got %d", i, expv, got)
-	}
-}
-
-func assertArray(t *testing.T, i int, got Array, exp interface{}) {
-	expv, ok := exp.(Array)
-	if !ok {
-		t.Errorf("%d: expected a %T, got %T", i, exp, got)
-		return
-	}
-	if len(got) != len(expv) {
-		t.Errorf("%d: expected an array of %d elements, got %d", i, len(expv), len(got))
-		return
-	}
-	for j := 0; j < len(got); j++ {
-		assertValue(t, i, got[j], expv[j])
+	if !reflect.DeepEqual(got, exp) {
+		t.Errorf("%d: expected output %v, got %v", i, exp, got)
 	}
 }
 
 func BenchmarkDecodeSimpleString(b *testing.B) {
-	r := bytes.NewBuffer(validCases[3].enc)
+	r := bytes.NewBuffer(encodeValidCases[3].enc)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Decode(r)
@@ -164,7 +121,7 @@ func BenchmarkDecodeSimpleString(b *testing.B) {
 }
 
 func BenchmarkDecodeError(b *testing.B) {
-	r := bytes.NewBuffer(validCases[7].enc)
+	r := bytes.NewBuffer(encodeValidCases[7].enc)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Decode(r)
@@ -172,7 +129,7 @@ func BenchmarkDecodeError(b *testing.B) {
 }
 
 func BenchmarkDecodeInteger(b *testing.B) {
-	r := bytes.NewBuffer(validCases[10].enc)
+	r := bytes.NewBuffer(encodeValidCases[10].enc)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Decode(r)
@@ -180,7 +137,7 @@ func BenchmarkDecodeInteger(b *testing.B) {
 }
 
 func BenchmarkDecodeBulkString(b *testing.B) {
-	r := bytes.NewBuffer(validCases[13].enc)
+	r := bytes.NewBuffer(encodeValidCases[13].enc)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Decode(r)
@@ -188,7 +145,7 @@ func BenchmarkDecodeBulkString(b *testing.B) {
 }
 
 func BenchmarkDecodeArray(b *testing.B) {
-	r := bytes.NewBuffer(validCases[19].enc)
+	r := bytes.NewBuffer(encodeValidCases[19].enc)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Decode(r)

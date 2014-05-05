@@ -9,6 +9,21 @@ import (
 // ErrInvalidValue is returned if the value to encode is invalid.
 var ErrInvalidValue = errors.New("resp: invalid value")
 
+// Error represents an error string as defined by the RESP. It cannot
+// contain \r or \n characters. It must be used as a type conversion
+// so that Encode serializes the string as an Error.
+type Error string
+
+// SimpleString represents a simple string as defined by the RESP. It
+// cannot contain \r or \n characters. It must be used as a type conversion
+// so that Encode serializes the string as a SimpleString.
+type SimpleString string
+
+// BulkString represents a binary-safe string as defined by the RESP.
+// It can be used as a type conversion so that Encode serializes the string
+// as a BulkString, but this is the default encoding for a normal Go string.
+type BulkString string
+
 // Encode encode the value v and writes the serialized data to w.
 func Encode(w io.Writer, v interface{}) error {
 	return encodeValue(w, v)
@@ -22,8 +37,6 @@ func encodeValue(w io.Writer, v interface{}) error {
 	case Error:
 		return encodeError(w, v)
 	case int64:
-		return encodeInteger(w, Integer(v))
-	case Integer:
 		return encodeInteger(w, v)
 	case string:
 		return encodeBulkString(w, BulkString(v))
@@ -71,8 +84,8 @@ func encodeBulkString(w io.Writer, v BulkString) error {
 }
 
 // encodeInteger encodes an integer value to w.
-func encodeInteger(w io.Writer, v Integer) error {
-	return encodePrefixed(w, ':', strconv.FormatInt(int64(v), 10))
+func encodeInteger(w io.Writer, v int64) error {
+	return encodePrefixed(w, ':', strconv.FormatInt(v, 10))
 }
 
 // encodeSimpleString encodes a simple string value to w.
