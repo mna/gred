@@ -112,42 +112,74 @@ func assertValue(t *testing.T, i int, got, exp interface{}) {
 	}
 }
 
+var forbenchmark interface{}
+
 func BenchmarkDecodeSimpleString(b *testing.B) {
-	r := bytes.NewBuffer(encodeValidCases[3].enc)
-	b.ResetTimer()
+	var val interface{}
+	var err error
+
 	for i := 0; i < b.N; i++ {
-		Decode(r)
+		r := bytes.NewBuffer(decodeValidCases[3].enc)
+		val, err = Decode(r)
 	}
+	if err != nil {
+		b.Fatal(err)
+	}
+	forbenchmark = val
 }
 
 func BenchmarkDecodeError(b *testing.B) {
-	r := bytes.NewBuffer(encodeValidCases[7].enc)
-	b.ResetTimer()
+	var val interface{}
+	var err error
+
 	for i := 0; i < b.N; i++ {
-		Decode(r)
+		r := bytes.NewBuffer(decodeValidCases[7].enc)
+		val, err = Decode(r)
 	}
+	if err != nil {
+		b.Fatal(err)
+	}
+	forbenchmark = val
 }
 
 func BenchmarkDecodeInteger(b *testing.B) {
-	r := bytes.NewBuffer(encodeValidCases[10].enc)
-	b.ResetTimer()
+	var val interface{}
+	var err error
+
 	for i := 0; i < b.N; i++ {
-		Decode(r)
+		r := bytes.NewBuffer(decodeValidCases[10].enc)
+		val, err = Decode(r)
 	}
+	if err != nil {
+		b.Fatal(err)
+	}
+	forbenchmark = val
 }
 
 func BenchmarkDecodeBulkString(b *testing.B) {
-	r := bytes.NewBuffer(encodeValidCases[13].enc)
-	b.ResetTimer()
+	var val interface{}
+	var err error
+
 	for i := 0; i < b.N; i++ {
-		Decode(r)
+		r := bytes.NewBuffer(decodeValidCases[13].enc)
+		val, err = Decode(r)
 	}
+	if err != nil {
+		b.Fatal(err)
+	}
+	forbenchmark = val
 }
 
 func BenchmarkDecodeArray(b *testing.B) {
-	r := bytes.NewBuffer(encodeValidCases[19].enc)
-	b.ResetTimer()
+	var val interface{}
+	var err error
+
 	for i := 0; i < b.N; i++ {
-		Decode(r)
+		r := bytes.NewBuffer(decodeValidCases[19].enc)
+		val, err = Decode(r)
 	}
+	if err != nil {
+		b.Fatal(err)
+	}
+	forbenchmark = val
 }

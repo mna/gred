@@ -53,36 +53,56 @@ func TestEncode(t *testing.T) {
 }
 
 func BenchmarkEncodeSimpleString(b *testing.B) {
+	var err error
 	var buf bytes.Buffer
 	for i := 0; i < b.N; i++ {
-		Encode(&buf, encodeValidCases[3].val)
+		err = Encode(&buf, encodeValidCases[3].val)
+	}
+	if err != nil {
+		b.Fatal(err)
 	}
 }
 
 func BenchmarkEncodeError(b *testing.B) {
+	var err error
 	var buf bytes.Buffer
 	for i := 0; i < b.N; i++ {
-		Encode(&buf, encodeValidCases[7].val)
+		err = Encode(&buf, encodeValidCases[7].val)
+	}
+	if err != nil {
+		b.Fatal(err)
 	}
 }
 
 func BenchmarkEncodeInteger(b *testing.B) {
+	var err error
 	var buf bytes.Buffer
 	for i := 0; i < b.N; i++ {
-		Encode(&buf, encodeValidCases[10].val)
+		err = Encode(&buf, encodeValidCases[10].val)
+	}
+	if err != nil {
+		b.Fatal(err)
 	}
 }
 
 func BenchmarkEncodeBulkString(b *testing.B) {
+	var err error
 	var buf bytes.Buffer
 	for i := 0; i < b.N; i++ {
-		Encode(&buf, encodeValidCases[13].val)
+		err = Encode(&buf, encodeValidCases[13].val)
+	}
+	if err != nil {
+		b.Fatal(err)
 	}
 }
 
 func BenchmarkEncodeArray(b *testing.B) {
+	var err error
 	var buf bytes.Buffer
 	for i := 0; i < b.N; i++ {
-		Encode(&buf, encodeValidCases[19].val)
+		err = Encode(&buf, encodeValidCases[19].val)
+	}
+	if err != nil {
+		b.Fatal(err)
 	}
 }
