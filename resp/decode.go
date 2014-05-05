@@ -35,6 +35,8 @@ var (
 	ErrInvalidRequest = errors.New("resp: invalid request, must be an array of bulk strings with at least one element")
 )
 
+// BytesReader defines the methods required for the Decode* family of methods.
+// Notably, a *bufio.Reader and a *bytes.Buffer both satisfy this interface.
 type BytesReader interface {
 	io.Reader
 	io.ByteReader
@@ -77,11 +79,11 @@ func DecodeRequest(r BytesReader) ([]string, error) {
 	// Must have only strings
 	strs := make([]string, len(ar))
 	for i, v := range ar {
-		if v, ok := v.(string); !ok {
+		v, ok := v.(string)
+		if !ok {
 			return nil, ErrInvalidRequest
-		} else {
-			strs[i] = v
 		}
+		strs[i] = v
 	}
 	return strs, nil
 }

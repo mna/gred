@@ -6,6 +6,8 @@ import (
 	"sync"
 )
 
+// ErrNotAnInt is returned is the value is not an integer when an integer
+// argument is expected.
 var ErrNotAnInt = errors.New("db: value is not an integer")
 
 type key struct {
