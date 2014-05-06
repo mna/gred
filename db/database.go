@@ -18,6 +18,10 @@ var cmds = map[string]cmdDef{
 	"append":   cmdDef{(*Database).append, 2},
 	"getrange": cmdDef{(*Database).getRange, 3},
 	"substr":   cmdDef{(*Database).getRange, 3},
+	"getset":   cmdDef{(*Database).getset, 2},
+	"strlen":   cmdDef{(*Database).strlen, 1},
+	"exists":   cmdDef{(*Database).exists, 1},
+	"del":      cmdDef{(*Database).del, 1},
 }
 
 var (

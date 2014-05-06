@@ -11,8 +11,11 @@ import (
 var ErrNotAnInt = errors.New("db: value is not an integer")
 
 type key struct {
+	name string
+
 	mu  sync.RWMutex
 	val string
+	exp *expirer
 }
 
 // get returns the value for the key at k.
@@ -40,7 +43,7 @@ func (d *Database) set(args ...string) (interface{}, error) {
 		d.mu.RUnlock()
 		d.mu.Lock()
 		defer d.mu.Unlock()
-		ky = &key{val: args[1]}
+		ky = &key{name: args[0], val: args[1]}
 		d.keys[args[0]] = ky
 
 	} else {
@@ -55,6 +58,12 @@ func (d *Database) set(args ...string) (interface{}, error) {
 func (k *key) set(v string) {
 	k.mu.Lock()
 	defer k.mu.Unlock()
+
+	// set removes expiration
+	if k.exp != nil {
+		k.exp.abort()
+		k.exp = nil
+	}
 	k.val = v
 }
 
@@ -67,7 +76,7 @@ func (d *Database) append(args ...string) (interface{}, error) {
 		d.mu.RUnlock()
 		d.mu.Lock()
 		defer d.mu.Unlock()
-		ky = &key{val: args[1]}
+		ky = &key{name: args[0], val: args[1]}
 		ln = int64(len(args[1]))
 		d.keys[args[0]] = ky
 
@@ -130,4 +139,104 @@ func (k *key) getRange(st, end int) string {
 		end = len(val) - 1
 	}
 	return val[st : end+1]
+}
+
+func (d *Database) getset(args ...string) (interface{}, error) {
+	d.mu.RLock()
+	if ky, ok := d.keys[args[0]]; !ok {
+		// Key does not exist yet, must create the key
+		d.mu.RUnlock()
+		d.mu.Lock()
+		defer d.mu.Unlock()
+		ky = &key{name: args[0], val: args[1]}
+		d.keys[args[0]] = ky
+
+		return nil, errNilSuccess
+
+	} else {
+		// Key already exists, set the new value and return the old
+		defer d.mu.RUnlock()
+		return ky.getset(args[1]), nil
+	}
+}
+
+func (k *key) getset(val string) string {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+
+	// getset removes expiration
+	if k.exp != nil {
+		k.exp.abort()
+		k.exp = nil
+	}
+	old := k.val
+	k.val = val
+	return old
+}
+
+func (d *Database) strlen(args ...string) (interface{}, error) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	if k, ok := d.keys[args[0]]; !ok {
+		return int64(0), nil
+	} else {
+		return k.strlen(), nil
+	}
+}
+
+func (k *key) strlen() int64 {
+	k.mu.RLock()
+	defer k.mu.RUnlock()
+
+	return int64(len(k.val))
+}
+
+func (d *Database) exists(args ...string) (interface{}, error) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	_, ok := d.keys[args[0]]
+	if ok {
+		return int64(1), nil
+	}
+	return int64(0), nil
+}
+
+func (d *Database) del(args ...string) (interface{}, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	var n int64
+	for _, arg := range args {
+		if k, ok := d.keys[arg]; ok {
+			n++
+			k.mu.Lock()
+			if k.exp != nil {
+				k.exp.abort()
+			}
+			delete(d.keys, arg)
+			k.mu.Unlock()
+		}
+	}
+	return n, nil
+}
+
+func (d *Database) expire(args ...string) (interface{}, error) {
+	secs, err := strconv.Atoi(args[1])
+	if err != nil {
+		return nil, err
+	}
+
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	if k, ok := d.keys[args[0]]; !ok {
+		return int64(0), nil
+	} else {
+		if secs <= 0 {
+			// Remove immediately
+			// TODO : Call an impl that doesn't set the mutex
+		}
+	}
 }

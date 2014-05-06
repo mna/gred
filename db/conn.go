@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"io"
-	"log"
 	"net"
 	"strings"
 
@@ -69,7 +68,6 @@ func (c *Conn) Handle() error {
 			}
 			continue
 		}
-		log.Printf("%#v\n", ar)
 
 		// Run the command
 		err = c.Do(ar[0], ar[1:]...)
