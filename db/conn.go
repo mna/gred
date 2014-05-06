@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"io"
+	"log"
 	"net"
 	"strings"
 
@@ -15,9 +16,11 @@ var (
 	ok   = []byte("+OK\r\n")
 
 	defaultDb = NewDB(0)
+
+	errPong = errors.New("pong")
 )
 
-type connCmdFunc func(c *Conn, args ...string) error
+type connCmdFunc func(c *Conn, args ...string) (interface{}, error)
 
 type connCmdDef struct {
 	fn    connCmdFunc
@@ -66,6 +69,7 @@ func (c *Conn) Handle() error {
 			}
 			continue
 		}
+		log.Printf("%#v\n", ar)
 
 		// Run the command
 		err = c.Do(ar[0], ar[1:]...)
@@ -75,15 +79,13 @@ func (c *Conn) Handle() error {
 	}
 }
 
-func (c *Conn) ping(args ...string) error {
+func (c *Conn) ping(args ...string) (interface{}, error) {
 	// Special case for ping, avoid allocation and return the pong predefined response.
-	_, err := c.c.Write(pong)
-	return err
+	return nil, errPong
 }
 
-func (c *Conn) echo(args ...string) error {
-	err := resp.Encode(c.c, args[0])
-	return err
+func (c *Conn) echo(args ...string) (interface{}, error) {
+	return args[0], nil
 }
 
 // Do executes a given command on the connection.
@@ -96,25 +98,33 @@ func (c *Conn) Do(cmd string, args ...string) error {
 		if len(args) != def.nArgs {
 			err = ErrMissingArg
 		} else {
-			err = def.fn(c, args...)
+			res, err = def.fn(c, args...)
 		}
 	} else {
 		res, err = c.db.Do(cmd, args...)
 	}
 
-	// If the command returned an error, send it back to the client
-	if err != nil {
+	switch err {
+	case errNilSuccess:
 		// Special-case for success but nil return value
-		if err == ErrNilSuccess {
-			return resp.Encode(c.c, nil)
+		return resp.Encode(c.c, nil)
+
+	case errPong:
+		// Special-case for pong response
+		_, err = c.c.Write(pong)
+		return err
+
+	case nil:
+		if res == nil {
+			// If the result is nil, send the OK response
+			_, err = c.c.Write(ok)
+			return err
 		}
+		// Otherwise encode the response
+		return resp.Encode(c.c, res)
+
+	default:
+		// Return the non-nil error
 		return resp.Encode(c.c, resp.Error(err.Error()))
 	}
-	// If the result is nil, send the OK response
-	if res == nil {
-		_, err = c.c.Write(ok)
-		return err
-	}
-	// Otherwise encode the response
-	return resp.Encode(c.c, res)
 }

@@ -30,7 +30,7 @@ var (
 
 	// ErrNilSuccess is a sentinel value to indicate the success of a command,
 	// and that the nil value should be returned.
-	ErrNilSuccess = errors.New("db: (nil)")
+	errNilSuccess = errors.New("db: (nil)")
 )
 
 // Database represents a Redis database, identified by its index.

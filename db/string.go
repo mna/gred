@@ -23,7 +23,7 @@ func (d *Database) get(args ...string) (interface{}, error) {
 	if key, ok := d.keys[args[0]]; ok {
 		return key.get(), nil
 	}
-	return "", ErrNilSuccess
+	return "", errNilSuccess
 }
 
 func (k *key) get() string {
