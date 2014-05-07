@@ -63,6 +63,20 @@ var decodeValidCases = []struct {
 			Array{"", nil}}, nil},
 }
 
+var decodeRequestCases = []struct {
+	raw []byte
+	exp []string
+	err error
+}{
+	0: {[]byte("*-1\r\n"), nil, ErrInvalidRequest},
+	1: {[]byte(":4\r\n"), nil, ErrNotAnArray},
+	2: {[]byte("*0\r\n"), nil, ErrInvalidRequest},
+	3: {[]byte("*1\r\n:6\r\n"), nil, ErrInvalidRequest},
+	4: {[]byte("*1\r\n$2\r\nab\r\n"), []string{"ab"}, nil},
+	5: {[]byte("*3\r\n$3\r\nSET\r\n$5\r\nmykey\r\n$24\r\nceci n'est pas un string\r\n"),
+		[]string{"SET", "mykey", "ceci n'est pas un string"}, nil},
+}
+
 func TestDecode(t *testing.T) {
 	for i, c := range append(decodeValidCases, decodeErrCases...) {
 		got, err := Decode(bytes.NewBuffer(c.enc))
@@ -77,19 +91,7 @@ func TestDecode(t *testing.T) {
 }
 
 func TestDecodeRequest(t *testing.T) {
-	cases := []struct {
-		raw []byte
-		exp []string
-		err error
-	}{
-		0: {[]byte("*-1\r\n"), nil, ErrInvalidRequest},
-		1: {[]byte(":4\r\n"), nil, ErrNotAnArray},
-		2: {[]byte("*0\r\n"), nil, ErrInvalidRequest},
-		3: {[]byte("*1\r\n:6\r\n"), nil, ErrInvalidRequest},
-		4: {[]byte("*1\r\n$2\r\nab\r\n"), []string{"ab"}, nil},
-	}
-
-	for i, c := range cases {
+	for i, c := range decodeRequestCases {
 		buf := bytes.NewBuffer(c.raw)
 		got, err := DecodeRequest(buf)
 		if err != c.err {
@@ -176,6 +178,20 @@ func BenchmarkDecodeArray(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		r := bytes.NewBuffer(decodeValidCases[19].enc)
+		val, err = Decode(r)
+	}
+	if err != nil {
+		b.Fatal(err)
+	}
+	forbenchmark = val
+}
+
+func BenchmarkDecodeRequest(b *testing.B) {
+	var val interface{}
+	var err error
+
+	for i := 0; i < b.N; i++ {
+		r := bytes.NewBuffer(decodeRequestCases[5].raw)
 		val, err = Decode(r)
 	}
 	if err != nil {

@@ -18,22 +18,12 @@ type key struct {
 	exp *expirer
 }
 
-// get returns the value for the key at k.
-func (d *Database) get(args ...string) (interface{}, error) {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
+var cmdGet = RLockExistBranch(CmdFunc(func(ctx *Ctx) (interface{}, error) {
+	ctx.key.mu.RLock()
+	defer ctx.key.mu.RUnlock()
 
-	if key, ok := d.keys[args[0]]; ok {
-		return key.get(), nil
-	}
-	return "", errNilSuccess
-}
-
-func (k *key) get() string {
-	k.mu.RLock()
-	defer k.mu.RUnlock()
-	return k.val
-}
+	return ctx.key.val, nil
+}), "", errNilSuccess)
 
 // set stores the value for the key at k.
 func (d *Database) set(args ...string) (interface{}, error) {
