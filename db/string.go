@@ -18,44 +18,28 @@ type key struct {
 	exp *expirer
 }
 
-var cmdGet = RLockExistBranch(CmdFunc(func(ctx *Ctx) (interface{}, error) {
-	ctx.key.mu.RLock()
-	defer ctx.key.mu.RUnlock()
+var cmdGet = CheckArgCount(
+	RLockExistBranch(
+		func(ctx *Ctx) (interface{}, error) {
+			ctx.key.mu.RLock()
+			defer ctx.key.mu.RUnlock()
 
-	return ctx.key.val, nil
-}), "", errNilSuccess)
+			return ctx.key.val, nil
+		}, "", errNilSuccess), 1, 1)
 
-// set stores the value for the key at k.
-func (d *Database) set(args ...string) (interface{}, error) {
-	d.mu.RLock()
-	if ky, ok := d.keys[args[0]]; !ok {
-		// Key does not exist yet, must create the key
-		d.mu.RUnlock()
-		d.mu.Lock()
-		defer d.mu.Unlock()
-		ky = &key{name: args[0], val: args[1]}
-		d.keys[args[0]] = ky
-
-	} else {
-		// Key already exists, set the new value
-		defer d.mu.RUnlock()
-		ky.set(args[1])
-	}
-
-	return nil, nil
-}
-
-func (k *key) set(v string) {
-	k.mu.Lock()
-	defer k.mu.Unlock()
-
-	// set removes expiration
-	if k.exp != nil {
-		k.exp.abort()
-		k.exp = nil
-	}
-	k.val = v
-}
+var cmdSet = CheckArgCount(
+	LockBothBranches(
+		func(ctx *Ctx) (interface{}, error) {
+			CreateKey(ctx)
+			return nil, nil
+		},
+		func(ctx *Ctx) (interface{}, error) {
+			// TODO : Remove expireation on SET
+			ctx.key.mu.Lock()
+			defer ctx.key.mu.Unlock()
+			ctx.key.val = ctx.s1
+			return nil, nil
+		}), 2, 2)
 
 func (d *Database) append(args ...string) (interface{}, error) {
 	var ln int64

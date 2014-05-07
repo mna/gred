@@ -30,7 +30,7 @@ var (
 
 	// ErrMissingArg is returned if there are not enough arguments to call
 	// the specified command.
-	ErrMissingArg = errors.New("db: missing argument")
+	ErrWrongNumberOfArgs = errors.New("db: wrong number of arguments")
 
 	// ErrNilSuccess is a sentinel value to indicate the success of a command,
 	// and that the nil value should be returned.
