@@ -2,7 +2,6 @@ package db
 
 import (
 	"errors"
-	"strconv"
 	"sync"
 )
 
@@ -41,79 +40,50 @@ var cmdSet = CheckArgCount(
 			return nil, nil
 		}), 2, 2)
 
-func (d *Database) append(args ...string) (interface{}, error) {
-	var ln int64
+var cmdAppend = CheckArgCount(
+	LockBothBranches(
+		func(ctx *Ctx) (interface{}, error) {
+			val, err := CreateKey(ctx)
+			return int64(len(val.(string))), err
+		},
+		func(ctx *Ctx) (interface{}, error) {
+			ctx.key.mu.Lock()
+			defer ctx.key.mu.Unlock()
 
-	d.mu.RLock()
-	if ky, ok := d.keys[args[0]]; !ok {
-		// Key does not exist yet, must create the key
-		d.mu.RUnlock()
-		d.mu.Lock()
-		defer d.mu.Unlock()
-		ky = &key{name: args[0], val: args[1]}
-		ln = int64(len(args[1]))
-		d.keys[args[0]] = ky
+			ctx.key.val += ctx.s1
+			return int64(len(ctx.s1)), nil
+		}), 2, 2)
 
-	} else {
-		// Key already exists, set the new value
-		defer d.mu.RUnlock()
-		ln = ky.append(args[1])
-	}
+var cmdGetRange = CheckArgCount(
+	ParseIntArgs(
+		RLockExistBranch(
+			func(ctx *Ctx) (interface{}, error) {
+				ctx.key.mu.RLock()
+				val := ctx.key.val
+				ctx.key.mu.RUnlock()
 
-	return ln, nil
-}
-
-func (k *key) append(v string) int64 {
-	k.mu.Lock()
-	defer k.mu.Unlock()
-	k.val += v
-	return int64(len(k.val))
-}
-
-func (d *Database) getRange(args ...string) (interface{}, error) {
-	st, err := strconv.Atoi(args[1])
-	if err != nil {
-		return nil, ErrNotAnInt
-	}
-	end, err := strconv.Atoi(args[2])
-	if err != nil {
-		return nil, ErrNotAnInt
-	}
-
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
-	if ky, ok := d.keys[args[0]]; ok {
-		return ky.getRange(st, end), nil
-	}
-	return "", nil
-}
-
-func (k *key) getRange(st, end int) string {
-	k.mu.RLock()
-	val := k.val
-	k.mu.RUnlock()
-
-	if st < 0 {
-		st = len(val) + st
-		if st < 0 {
-			st = 0
-		}
-	}
-	if st >= len(val) {
-		return ""
-	}
-	if end < 0 {
-		end = len(val) + end
-	}
-	if end < 0 || end < st {
-		return ""
-	}
-	if end >= len(val) {
-		end = len(val) - 1
-	}
-	return val[st : end+1]
-}
+				st, end := ctx.i0, ctx.i1
+				if st < 0 {
+					st = len(val) + st
+					if st < 0 {
+						st = 0
+					}
+				}
+				if st >= len(val) {
+					return "", nil
+				}
+				if end < 0 {
+					end = len(val) + end
+				}
+				if end < 0 || end < st {
+					return "", nil
+				}
+				if end >= len(val) {
+					end = len(val) - 1
+				}
+				return val[st : end+1], nil
+			}, "", nil),
+	), 3, 3)
 
 func (d *Database) getset(args ...string) (interface{}, error) {
 	d.mu.RLock()
@@ -194,23 +164,4 @@ func (d *Database) del(args ...string) (interface{}, error) {
 		}
 	}
 	return n, nil
-}
-
-func (d *Database) expire(args ...string) (interface{}, error) {
-	secs, err := strconv.Atoi(args[1])
-	if err != nil {
-		return nil, err
-	}
-
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
-	if k, ok := d.keys[args[0]]; !ok {
-		return int64(0), nil
-	} else {
-		if secs <= 0 {
-			// Remove immediately
-			// TODO : Call an impl that doesn't set the mutex
-		}
-	}
 }

@@ -1,5 +1,8 @@
 package db
 
+import "strconv"
+
+// Ctx holds the execution context for a command.
 type Ctx struct {
 	conn *Conn
 	db   *Database
@@ -11,8 +14,11 @@ type Ctx struct {
 	raw []string
 }
 
+// Cmd represents a command's function.
 type Cmd func(*Ctx) (interface{}, error)
 
+// CreateKey is a Cmd function that creates a string key
+// using the current Ctx values.
 func CreateKey(ctx *Ctx) (interface{}, error) {
 	ky := &key{name: ctx.s0, val: ctx.s1}
 	ctx.db.keys[ctx.s0] = ky
@@ -20,6 +26,9 @@ func CreateKey(ctx *Ctx) (interface{}, error) {
 	return ctx.s1, nil
 }
 
+// CheckArgCount verifies the argument count based on the
+// specified requirements. It stores the string values in
+// the predefined s0, s1 and s2 Ctx registers.
 func CheckArgCount(cmd Cmd, min, max int) Cmd {
 	return func(ctx *Ctx) (interface{}, error) {
 		l := len(ctx.raw)
@@ -35,6 +44,28 @@ func CheckArgCount(cmd Cmd, min, max int) Cmd {
 		}
 		if l > 2 {
 			ctx.s2 = ctx.raw[2]
+		}
+		return cmd(ctx)
+	}
+}
+
+func ParseIntArgs(cmd Cmd, indices ...int) Cmd {
+	return func(ctx *Ctx) (interface{}, error) {
+		for i, ix := range indices {
+			if ix >= 0 && ix < len(ctx.raw) {
+				j, err := strconv.Atoi(ctx.raw[ix])
+				if err != nil {
+					return nil, ErrNotAnInt
+				}
+				switch i {
+				case 0:
+					ctx.i0 = j
+				case 1:
+					ctx.i1 = j
+				case 2:
+					ctx.i2 = j
+				}
+			}
 		}
 		return cmd(ctx)
 	}
