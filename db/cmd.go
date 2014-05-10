@@ -1,6 +1,15 @@
 package db
 
-import "strconv"
+import (
+	"errors"
+	"strconv"
+)
+
+var (
+	// errWrongNumberOfArgs is returned if there are not enough or too many arguments to call
+	// the specified command.
+	errWrongNumberOfArgs = errors.New("db: wrong number of arguments")
+)
 
 // Ctx holds the execution context for a command.
 type Ctx struct {
@@ -32,8 +41,8 @@ func CreateKey(ctx *Ctx) (interface{}, error) {
 func CheckArgCount(cmd Cmd, min, max int) Cmd {
 	return func(ctx *Ctx) (interface{}, error) {
 		l := len(ctx.raw)
-		if l < min || l > max {
-			return nil, ErrWrongNumberOfArgs
+		if l < min || (l > max && max >= 0) {
+			return nil, errWrongNumberOfArgs
 		}
 		// Store in s0..s2
 		if l > 0 {
@@ -77,6 +86,26 @@ func LockKey(cmd Cmd) Cmd {
 		defer ctx.key.mu.Unlock()
 		return cmd(ctx)
 	}
+}
+
+func LockEachKey(cmd Cmd) Cmd {
+	return Cmd(func(ctx *Ctx) (interface{}, error) {
+		ctx.db.mu.Lock()
+		defer ctx.db.mu.Unlock()
+
+		n := 0
+		for _, k := range ctx.raw {
+			if ky, ok := ctx.db.keys[k]; ok {
+				ctx.key = ky
+				_, err := cmd(ctx)
+				if err != nil {
+					return n, err
+				}
+				n++
+			}
+		}
+		return int64(n), nil
+	})
 }
 
 func RLockExistBranch(cmd Cmd, defRes interface{}, defErr error) Cmd {

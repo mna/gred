@@ -11,39 +11,35 @@ import (
 )
 
 var (
-	pong = []byte("+PONG\r\n")
-	ok   = []byte("+OK\r\n")
-
+	ok        = []byte("+OK\r\n")
 	defaultDb = NewDB(0)
 
-	errPong = errors.New("pong")
+	// errInvalidCommand is returned when a malformed command is received.
+	errInvalidCommand = errors.New("db: invalid command")
+
+	// ErrNilSuccess is a sentinel value to indicate the success of a command,
+	// and that the nil value should be returned.
+	errNilSuccess = errors.New("db: (nil)")
 )
-
-type connCmdFunc func(c *Conn, args ...string) (interface{}, error)
-
-type connCmdDef struct {
-	fn    connCmdFunc
-	nArgs int
-}
-
-var connCmds = map[string]connCmdDef{
-	"ping": connCmdDef{(*Conn).ping, 0},
-	"echo": connCmdDef{(*Conn).echo, 1},
-}
 
 // Conn represents a network connection to the server.
 type Conn struct {
-	c  net.Conn
-	db *Database
+	c    net.Conn
+	db   *Database
+	ctx  *Ctx
+	quit bool
 }
 
 // NewConn creates a new Conn for the underlying net.Conn network
 // connection.
 func NewConn(c net.Conn) *Conn {
-	return &Conn{
-		c:  c,
-		db: defaultDb,
+	conn := &Conn{
+		c:   c,
+		db:  defaultDb,
+		ctx: &Ctx{},
 	}
+	conn.ctx.conn = conn
+	return conn
 }
 
 // Handle handles a connection to the server, and processes its requests.
@@ -70,38 +66,67 @@ func (c *Conn) Handle() error {
 		}
 
 		// Run the command
-		err = c.Do(ar[0], ar[1:]...)
+		err = c.do(ar[0], ar[1:]...)
 		if err != nil {
 			return err
 		}
+		if c.quit {
+			// Quit command, asked to close connection.
+			return nil
+		}
 	}
-}
-
-func (c *Conn) ping(args ...string) (interface{}, error) {
-	// Special case for ping, avoid allocation and return the pong predefined response.
-	return nil, errPong
-}
-
-func (c *Conn) echo(args ...string) (interface{}, error) {
-	return args[0], nil
 }
 
 // Do executes a given command on the connection.
-func (c *Conn) Do(cmd string, args ...string) error {
+func (c *Conn) do(cmd string, args ...string) error {
 	var res interface{}
 	var err error
 
+	// Prepare the command and context
 	cmd = strings.ToLower(cmd)
-	if def, ok := connCmds[cmd]; ok {
-		if len(args) != def.nArgs {
-			err = ErrMissingArg
-		} else {
-			res, err = def.fn(c, args...)
-		}
-	} else {
-		res, err = c.db.Do(cmd, args...)
-	}
+	c.ctx.db = c.db
+	c.ctx.raw = args
 
+	// Excecute the command
+	switch cmd {
+	// Connection commands
+	case "echo":
+		res, err = cmdEcho(c.ctx)
+	case "ping":
+		res, err = cmdPing(c.ctx)
+	case "quit":
+		res, err = cmdQuit(c.ctx)
+		if err == nil {
+			c.quit = true
+		}
+
+		// Keys commands
+	case "del":
+		res, err = cmdDel(c.ctx)
+	case "exists":
+		res, err = cmdExists(c.ctx)
+
+		// Strings commands
+	case "append":
+		res, err = cmdAppend(c.ctx)
+	case "get":
+		res, err = cmdGet(c.ctx)
+	case "getrange":
+		res, err = cmdGetRange(c.ctx)
+	case "getset":
+		res, err = cmdGetSet(c.ctx)
+	case "set":
+		res, err = cmdSet(c.ctx)
+	case "strlen":
+		res, err = cmdStrLen(c.ctx)
+
+	default:
+		err = errInvalidCommand
+	}
+	return c.writeResponse(res, err)
+}
+
+func (c *Conn) writeResponse(res interface{}, err error) error {
 	switch err {
 	case errNilSuccess:
 		// Special-case for success but nil return value

@@ -31,7 +31,6 @@ func (e *expirer) start() {
 	go func() {
 		select {
 		case <-ch:
-			e.db.Do("del")
 		case <-e.stop:
 		}
 		e.mu.Lock()
