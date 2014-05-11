@@ -59,3 +59,16 @@ var cmdPersist = CheckArgCount(
 			}
 			return int64(0), nil
 		}, int64(0), nil), 1, 1)
+
+var cmdTTL = CheckArgCount(
+	RLockExistBranch(
+		func(ctx *Ctx) (interface{}, error) {
+			ctx.key.RLock()
+			defer ctx.key.RUnlock()
+
+			dur := ctx.key.TTL()
+			if dur == -1 {
+				return int64(-1), nil
+			}
+			return int64(dur.Seconds()), nil
+		}, int64(-2), nil), 1, 1)

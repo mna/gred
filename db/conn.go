@@ -113,6 +113,8 @@ func (c *Conn) do(cmd string, args ...string) error {
 		res, err = cmdExpire(c.ctx)
 	case "persist":
 		res, err = cmdPersist(c.ctx)
+	case "ttl":
+		res, err = cmdTTL(c.ctx)
 
 		// Strings commands
 	case "append":

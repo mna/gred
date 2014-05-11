@@ -7,6 +7,8 @@ import (
 	"github.com/PuerkitoBio/gred/db"
 )
 
+// TODO : use glog as logging package
+
 func main() {
 	// Listen on TCP port 6379 on all interfaces.
 	l, err := net.Listen("tcp", ":6379")
@@ -14,6 +16,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer l.Close()
+
 	for {
 		// Wait for a connection.
 		conn, err := l.Accept()

@@ -79,7 +79,11 @@ func (s *stringKey) Abort() bool {
 }
 
 // TTL returns the time-to-live of the key before an expiration is triggered.
+// It returns -1 if there is no expiration associated with the key.
 func (s *stringKey) TTL() time.Duration {
+	if s.tmr == nil {
+		return -1
+	}
 	dur := s.expAt.Sub(time.Now())
 	if dur > 0 {
 		return dur
