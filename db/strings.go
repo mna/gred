@@ -3,8 +3,13 @@ package db
 var cmdAppend = CheckArgCount(
 	LockBothBranches(
 		func(ctx *Ctx) (interface{}, error) {
-			val, err := CreateKey(ctx)
-			return int64(len(val.(string))), err
+			key := &stringKey{
+				Expirer: &expirer{},
+				name:    ctx.s0,
+				val:     ctx.s1,
+			}
+			ctx.db.keys[ctx.s0] = key
+			return int64(len(ctx.s1)), nil
 		},
 		func(ctx *Ctx) (interface{}, error) {
 			ctx.key.Lock()
@@ -14,7 +19,7 @@ var cmdAppend = CheckArgCount(
 				v := key.Get()
 				v += ctx.s1
 				key.Set(v)
-				return int64(len(ctx.s1)), nil
+				return int64(len(v)), nil
 			}
 			return nil, errInvalidKeyType
 		}), 2, 2)
@@ -72,7 +77,12 @@ var cmdGetRange = CheckArgCount(
 var cmdGetSet = CheckArgCount(
 	LockBothBranches(
 		func(ctx *Ctx) (interface{}, error) {
-			CreateKey(ctx)
+			key := &stringKey{
+				Expirer: &expirer{},
+				name:    ctx.s0,
+				val:     ctx.s1,
+			}
+			ctx.db.keys[ctx.s0] = key
 			return nil, errNilSuccess
 		},
 		func(ctx *Ctx) (interface{}, error) {
@@ -91,7 +101,12 @@ var cmdGetSet = CheckArgCount(
 var cmdSet = CheckArgCount(
 	LockBothBranches(
 		func(ctx *Ctx) (interface{}, error) {
-			CreateKey(ctx)
+			key := &stringKey{
+				Expirer: &expirer{},
+				name:    ctx.s0,
+				val:     ctx.s1,
+			}
+			ctx.db.keys[ctx.s0] = key
 			return nil, nil
 		},
 		func(ctx *Ctx) (interface{}, error) {

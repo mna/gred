@@ -11,7 +11,11 @@ import (
 )
 
 var (
-	ok        = []byte("+OK\r\n")
+	// ok is the standard OK serialized return value, to avoid allocation for
+	// this common case.
+	ok = []byte("+OK\r\n")
+
+	// defaultDb is the default database used by all new connections (db 0).
 	defaultDb = NewDB(0)
 
 	// errInvalidCommand is returned when a malformed command is received.
@@ -136,6 +140,7 @@ func (c *Conn) do(cmd string, args ...string) error {
 	return c.writeResponse(res, err)
 }
 
+// writeResponse writes the response to the network connection.
 func (c *Conn) writeResponse(res interface{}, err error) error {
 	switch err {
 	case errNilSuccess:

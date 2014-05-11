@@ -1,9 +1,6 @@
 package db
 
-import (
-	"sync"
-	"time"
-)
+import "sync"
 
 // Database represents a Redis database, identified by its index.
 type Database struct {
@@ -26,13 +23,6 @@ type RWLocker interface {
 	sync.Locker
 	RLock()
 	RUnlock()
-}
-
-// Expirer is the interface that defines the methods to manage expiration.
-type Expirer interface {
-	Expire(time.Time, func()) bool
-	TTL() time.Duration
-	Abort() bool
 }
 
 // Key is the interface that defines the methods to represent a Key.

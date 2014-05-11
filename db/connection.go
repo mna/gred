@@ -3,7 +3,12 @@ package db
 import "errors"
 
 var (
-	pong    = []byte("+PONG\r\n")
+	// pong is the standard PONG serialized response, to avoid allocations
+	// for this common case.
+	pong = []byte("+PONG\r\n")
+
+	// errPong is a sentinel error value to indicate that the standard PONG
+	// response should be returned.
 	errPong = errors.New("pong")
 )
 

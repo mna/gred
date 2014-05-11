@@ -30,15 +30,6 @@ type Ctx struct {
 // Cmd represents a command's function.
 type Cmd func(*Ctx) (interface{}, error)
 
-// CreateKey is a Cmd function that creates a string key
-// using the current Ctx values.
-func CreateKey(ctx *Ctx) (interface{}, error) {
-	ky := &stringKey{name: ctx.s0, val: ctx.s1}
-	ctx.db.keys[ctx.s0] = ky
-
-	return ctx.s1, nil
-}
-
 // CheckArgCount verifies the argument count based on the
 // specified requirements. It stores the string values in
 // the predefined s0, s1 and s2 Ctx registers.
@@ -62,6 +53,8 @@ func CheckArgCount(cmd Cmd, min, max int) Cmd {
 	}
 }
 
+// ParseIntArgs parses as integers the arguments of the Ctx identified by the indices
+// and stores the first 3 integers in i0, i1 and i2 on the Ctx.
 func ParseIntArgs(cmd Cmd, indices ...int) Cmd {
 	return func(ctx *Ctx) (interface{}, error) {
 		for i, ix := range indices {
@@ -84,6 +77,8 @@ func ParseIntArgs(cmd Cmd, indices ...int) Cmd {
 	}
 }
 
+// LockEachKey acquires a Lock on the database and calls cmd for each key identified
+// by the raw arguments.
 func LockEachKey(cmd Cmd) Cmd {
 	return Cmd(func(ctx *Ctx) (interface{}, error) {
 		ctx.db.mu.Lock()
@@ -104,6 +99,8 @@ func LockEachKey(cmd Cmd) Cmd {
 	})
 }
 
+// RLockExistBranch read-locks the database and calls cmd with the key identified
+// by ctx.s0 if the key exists. It returns defRes and defErr is no such key exists.
 func RLockExistBranch(cmd Cmd, defRes interface{}, defErr error) Cmd {
 	return Cmd(func(ctx *Ctx) (interface{}, error) {
 		ctx.db.mu.RLock()
@@ -117,6 +114,9 @@ func RLockExistBranch(cmd Cmd, defRes interface{}, defErr error) Cmd {
 	})
 }
 
+// LockExistBranch acquires a Lock on the database and calls cmd for the key
+// identified by ctx.s0 if such key exists. It returns defRes and defErr is no
+// such key exists.
 func LockExistBranch(cmd Cmd, defRes interface{}, defErr error) Cmd {
 	return Cmd(func(ctx *Ctx) (interface{}, error) {
 		ctx.db.mu.Lock()
@@ -130,6 +130,9 @@ func LockExistBranch(cmd Cmd, defRes interface{}, defErr error) Cmd {
 	})
 }
 
+// LockBothBranches read-locks the database, and upgrades the lock to a read-write
+// lock if the key identified by ctx.s0 does not exist (and calls cmdNotExist), or it
+// keeps the read-only lock and calls cmdExist it such key exists.
 func LockBothBranches(cmdNotExist, cmdExist Cmd) Cmd {
 	return func(ctx *Ctx) (interface{}, error) {
 		ctx.db.mu.RLock()
