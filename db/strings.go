@@ -1,28 +1,5 @@
 package db
 
-import "sync"
-
-var _ StringKey = (*stringKey)(nil)
-
-type stringKey struct {
-	sync.RWMutex
-
-	name string
-	val  string
-}
-
-func (s *stringKey) Name() string {
-	return s.name
-}
-
-func (s *stringKey) Get() string {
-	return s.val
-}
-
-func (s *stringKey) Set(v string) {
-	s.val = v
-}
-
 var cmdAppend = CheckArgCount(
 	LockBothBranches(
 		func(ctx *Ctx) (interface{}, error) {
@@ -99,11 +76,11 @@ var cmdGetSet = CheckArgCount(
 			return nil, errNilSuccess
 		},
 		func(ctx *Ctx) (interface{}, error) {
-			// TODO : Remove expiration on GETSET
 			ctx.key.Lock()
 			defer ctx.key.Unlock()
 
 			if key, ok := ctx.key.(StringKey); ok {
+				key.Abort()
 				old := key.Get()
 				key.Set(ctx.s1)
 				return old, nil
@@ -118,11 +95,11 @@ var cmdSet = CheckArgCount(
 			return nil, nil
 		},
 		func(ctx *Ctx) (interface{}, error) {
-			// TODO : Remove expiration on SET
 			ctx.key.Lock()
 			defer ctx.key.Unlock()
 
 			if key, ok := ctx.key.(StringKey); ok {
+				key.Abort()
 				key.Set(ctx.s1)
 				return nil, nil
 			}

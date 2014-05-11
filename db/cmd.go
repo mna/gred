@@ -84,14 +84,6 @@ func ParseIntArgs(cmd Cmd, indices ...int) Cmd {
 	}
 }
 
-func LockKey(cmd Cmd) Cmd {
-	return func(ctx *Ctx) (interface{}, error) {
-		ctx.key.Lock()
-		defer ctx.key.Unlock()
-		return cmd(ctx)
-	}
-}
-
 func LockEachKey(cmd Cmd) Cmd {
 	return Cmd(func(ctx *Ctx) (interface{}, error) {
 		ctx.db.mu.Lock()
@@ -116,6 +108,19 @@ func RLockExistBranch(cmd Cmd, defRes interface{}, defErr error) Cmd {
 	return Cmd(func(ctx *Ctx) (interface{}, error) {
 		ctx.db.mu.RLock()
 		defer ctx.db.mu.RUnlock()
+
+		if key, ok := ctx.db.keys[ctx.s0]; ok {
+			ctx.key = key
+			return cmd(ctx)
+		}
+		return defRes, defErr
+	})
+}
+
+func LockExistBranch(cmd Cmd, defRes interface{}, defErr error) Cmd {
+	return Cmd(func(ctx *Ctx) (interface{}, error) {
+		ctx.db.mu.Lock()
+		defer ctx.db.mu.Unlock()
 
 		if key, ok := ctx.db.keys[ctx.s0]; ok {
 			ctx.key = key

@@ -109,6 +109,10 @@ func (c *Conn) do(cmd string, args ...string) error {
 		res, err = cmdDel(c.ctx)
 	case "exists":
 		res, err = cmdExists(c.ctx)
+	case "expire":
+		res, err = cmdExpire(c.ctx)
+	case "persist":
+		res, err = cmdPersist(c.ctx)
 
 		// Strings commands
 	case "append":
