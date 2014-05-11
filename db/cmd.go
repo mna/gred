@@ -133,18 +133,19 @@ func LockExistBranch(cmd Cmd, defRes interface{}, defErr error) Cmd {
 func LockBothBranches(cmdNotExist, cmdExist Cmd) Cmd {
 	return func(ctx *Ctx) (interface{}, error) {
 		ctx.db.mu.RLock()
-		if ky, ok := ctx.db.keys[ctx.s0]; !ok {
+
+		ky, ok := ctx.db.keys[ctx.s0]
+		if !ok {
 			// Key does not exist yet
 			ctx.db.mu.RUnlock()
 			ctx.db.mu.Lock()
 			defer ctx.db.mu.Unlock()
 			return cmdNotExist(ctx)
-
-		} else {
-			// Key already exists
-			defer ctx.db.mu.RUnlock()
-			ctx.key = ky
-			return cmdExist(ctx)
 		}
+
+		// Key already exists
+		defer ctx.db.mu.RUnlock()
+		ctx.key = ky
+		return cmdExist(ctx)
 	}
 }
