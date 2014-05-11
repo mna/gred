@@ -1,20 +1,26 @@
 package db
 
-import (
-	"errors"
-	"sync"
-)
+import "sync"
 
-// ErrNotAnInt is returned is the value is not an integer when an integer
-// argument is expected.
-var ErrNotAnInt = errors.New("db: value is not an integer")
+var _ StringKey = (*stringKey)(nil)
 
-type key struct {
+type stringKey struct {
+	sync.RWMutex
+
 	name string
+	val  string
+}
 
-	mu  sync.RWMutex
-	val string
-	exp *expirer
+func (s *stringKey) Name() string {
+	return s.name
+}
+
+func (s *stringKey) Get() string {
+	return s.val
+}
+
+func (s *stringKey) Set(v string) {
+	s.val = v
 }
 
 var cmdAppend = CheckArgCount(
@@ -24,29 +30,44 @@ var cmdAppend = CheckArgCount(
 			return int64(len(val.(string))), err
 		},
 		func(ctx *Ctx) (interface{}, error) {
-			ctx.key.mu.Lock()
-			defer ctx.key.mu.Unlock()
+			ctx.key.Lock()
+			defer ctx.key.Unlock()
 
-			ctx.key.val += ctx.s1
-			return int64(len(ctx.s1)), nil
+			if key, ok := ctx.key.(StringKey); ok {
+				v := key.Get()
+				v += ctx.s1
+				key.Set(v)
+				return int64(len(ctx.s1)), nil
+			}
+			return nil, errInvalidKeyType
 		}), 2, 2)
 
 var cmdGet = CheckArgCount(
 	RLockExistBranch(
 		func(ctx *Ctx) (interface{}, error) {
-			ctx.key.mu.RLock()
-			defer ctx.key.mu.RUnlock()
+			ctx.key.RLock()
+			defer ctx.key.RUnlock()
 
-			return ctx.key.val, nil
+			if key, ok := ctx.key.(StringKey); ok {
+				return key.Get(), nil
+			}
+			return nil, errInvalidKeyType
 		}, "", errNilSuccess), 1, 1)
 
 var cmdGetRange = CheckArgCount(
 	ParseIntArgs(
 		RLockExistBranch(
 			func(ctx *Ctx) (interface{}, error) {
-				ctx.key.mu.RLock()
-				val := ctx.key.val
-				ctx.key.mu.RUnlock()
+				var val string
+
+				ctx.key.RLock()
+				if key, ok := ctx.key.(StringKey); ok {
+					val = key.Get()
+				} else {
+					ctx.key.RUnlock()
+					return nil, errInvalidKeyType
+				}
+				ctx.key.RUnlock()
 
 				st, end := ctx.i0, ctx.i1
 				if st < 0 {
@@ -79,11 +100,15 @@ var cmdGetSet = CheckArgCount(
 		},
 		func(ctx *Ctx) (interface{}, error) {
 			// TODO : Remove expiration on GETSET
-			ctx.key.mu.Lock()
-			defer ctx.key.mu.Unlock()
-			old := ctx.key.val
-			ctx.key.val = ctx.s1
-			return old, nil
+			ctx.key.Lock()
+			defer ctx.key.Unlock()
+
+			if key, ok := ctx.key.(StringKey); ok {
+				old := key.Get()
+				key.Set(ctx.s1)
+				return old, nil
+			}
+			return nil, errInvalidKeyType
 		}), 2, 2)
 
 var cmdSet = CheckArgCount(
@@ -94,17 +119,24 @@ var cmdSet = CheckArgCount(
 		},
 		func(ctx *Ctx) (interface{}, error) {
 			// TODO : Remove expiration on SET
-			ctx.key.mu.Lock()
-			defer ctx.key.mu.Unlock()
-			ctx.key.val = ctx.s1
-			return nil, nil
+			ctx.key.Lock()
+			defer ctx.key.Unlock()
+
+			if key, ok := ctx.key.(StringKey); ok {
+				key.Set(ctx.s1)
+				return nil, nil
+			}
+			return nil, errInvalidKeyType
 		}), 2, 2)
 
 var cmdStrLen = CheckArgCount(
 	RLockExistBranch(
 		func(ctx *Ctx) (interface{}, error) {
-			ctx.key.mu.RLock()
-			defer ctx.key.mu.RUnlock()
+			ctx.key.RLock()
+			defer ctx.key.RUnlock()
 
-			return int64(len(ctx.key.val)), nil
+			if key, ok := ctx.key.(StringKey); ok {
+				return int64(len(key.Get())), nil
+			}
+			return nil, errInvalidKeyType
 		}, int64(0), nil), 1, 1)

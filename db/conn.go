@@ -17,9 +17,13 @@ var (
 	// errInvalidCommand is returned when a malformed command is received.
 	errInvalidCommand = errors.New("db: invalid command")
 
-	// ErrNilSuccess is a sentinel value to indicate the success of a command,
+	// errNilSuccess is a sentinel value to indicate the success of a command,
 	// and that the nil value should be returned.
 	errNilSuccess = errors.New("db: (nil)")
+
+	// errInvalidKeyType is the error returned when the key is not the right
+	// type for the command to execute.
+	errInvalidKeyType = errors.New("db: invalid key type")
 )
 
 // Conn represents a network connection to the server.

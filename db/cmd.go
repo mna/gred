@@ -9,13 +9,17 @@ var (
 	// errWrongNumberOfArgs is returned if there are not enough or too many arguments to call
 	// the specified command.
 	errWrongNumberOfArgs = errors.New("db: wrong number of arguments")
+
+	// errNotAnInt is returned is the value is not an integer when an integer
+	// argument is expected.
+	errNotAnInt = errors.New("db: value is not an integer")
 )
 
 // Ctx holds the execution context for a command.
 type Ctx struct {
 	conn *Conn
 	db   *Database
-	key  *key
+	key  Key
 
 	s0, s1, s2 string
 	i0, i1, i2 int
@@ -29,7 +33,7 @@ type Cmd func(*Ctx) (interface{}, error)
 // CreateKey is a Cmd function that creates a string key
 // using the current Ctx values.
 func CreateKey(ctx *Ctx) (interface{}, error) {
-	ky := &key{name: ctx.s0, val: ctx.s1}
+	ky := &stringKey{name: ctx.s0, val: ctx.s1}
 	ctx.db.keys[ctx.s0] = ky
 
 	return ctx.s1, nil
@@ -64,7 +68,7 @@ func ParseIntArgs(cmd Cmd, indices ...int) Cmd {
 			if ix >= 0 && ix < len(ctx.raw) {
 				j, err := strconv.Atoi(ctx.raw[ix])
 				if err != nil {
-					return nil, ErrNotAnInt
+					return nil, errNotAnInt
 				}
 				switch i {
 				case 0:
@@ -82,8 +86,8 @@ func ParseIntArgs(cmd Cmd, indices ...int) Cmd {
 
 func LockKey(cmd Cmd) Cmd {
 	return func(ctx *Ctx) (interface{}, error) {
-		ctx.key.mu.Lock()
-		defer ctx.key.mu.Unlock()
+		ctx.key.Lock()
+		defer ctx.key.Unlock()
 		return cmd(ctx)
 	}
 }
