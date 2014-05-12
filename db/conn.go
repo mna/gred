@@ -36,7 +36,8 @@ var (
 
 // Conn represents a network connection to the server.
 type Conn struct {
-	c    net.Conn
+	c net.Conn
+
 	db   *Database
 	ctx  *Ctx
 	quit bool
