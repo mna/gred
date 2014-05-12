@@ -1,5 +1,7 @@
 package db
 
+import "github.com/PuerkitoBio/gred/resp"
+
 var cmdHdel = CheckArgCount(
 	RLockExistBranch(
 		func(ctx *Ctx) (interface{}, error) {
@@ -63,6 +65,82 @@ var cmdHget = CheckArgCount(
 			}
 			return nil, errInvalidKeyType
 		}, nil, errNilSuccess), 2, 2)
+
+var cmdHgetAll = CheckArgCount(
+	RLockExistBranch(
+		func(ctx *Ctx) (interface{}, error) {
+			ctx.key.RLock()
+			defer ctx.key.RUnlock()
+
+			if key, ok := ctx.key.(HashKey); ok {
+				h := key.Get()
+				ar := make(resp.Array, 2*len(h))
+				i := 0
+				for k, v := range h {
+					ar[i] = k
+					ar[i+1] = v
+					i += 2
+				}
+				return ar, nil
+			}
+			return nil, errInvalidKeyType
+		}, resp.Array{}, nil), 1, 1)
+
+var cmdHkeys = CheckArgCount(
+	RLockExistBranch(
+		func(ctx *Ctx) (interface{}, error) {
+			ctx.key.RLock()
+			defer ctx.key.RUnlock()
+
+			if key, ok := ctx.key.(HashKey); ok {
+				h := key.Get()
+				ar := make(resp.Array, len(h))
+				i := 0
+				for k := range h {
+					ar[i] = k
+					i++
+				}
+				return ar, nil
+			}
+			return nil, errInvalidKeyType
+		}, resp.Array{}, nil), 1, 1)
+
+var cmdHlen = CheckArgCount(
+	RLockExistBranch(
+		func(ctx *Ctx) (interface{}, error) {
+			ctx.key.RLock()
+			defer ctx.key.RUnlock()
+
+			if key, ok := ctx.key.(HashKey); ok {
+				h := key.Get()
+				return int64(len(h)), nil
+			}
+			return nil, errInvalidKeyType
+		}, int64(0), nil), 1, 1)
+
+var cmdHmget = CheckArgCount(
+	RLockExistOrNot(
+		func(ctx *Ctx) (interface{}, error) {
+			if ctx.key == nil {
+				// Return nils for each requested field
+				return make(resp.Array, len(ctx.raw)-1), nil
+			}
+
+			ctx.key.RLock()
+			defer ctx.key.RUnlock()
+
+			if key, ok := ctx.key.(HashKey); ok {
+				h := key.Get()
+				ar := make(resp.Array, len(ctx.raw)-1)
+				for i := 1; i < len(ctx.raw); i++ {
+					if v, ok := h[ctx.raw[i]]; ok {
+						ar[i-1] = v
+					}
+				}
+				return ar, nil
+			}
+			return nil, errInvalidKeyType
+		}), 2, -1)
 
 var cmdHset = CheckArgCount(
 	LockBothBranches(

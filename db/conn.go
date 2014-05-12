@@ -141,6 +141,14 @@ func (c *Conn) do(cmd string, args ...string) error {
 		res, err = cmdHexists(c.ctx)
 	case "hget":
 		res, err = cmdHget(c.ctx)
+	case "hgetall":
+		res, err = cmdHgetAll(c.ctx)
+	case "hkeys":
+		res, err = cmdHkeys(c.ctx)
+	case "hlen":
+		res, err = cmdHlen(c.ctx)
+	case "hmget":
+		res, err = cmdHmget(c.ctx)
 	case "hset":
 		res, err = cmdHset(c.ctx)
 

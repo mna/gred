@@ -99,6 +99,21 @@ func LockEachKey(cmd Cmd) Cmd {
 	})
 }
 
+// RLockExistOrNot read-locks the database and calls cmd with the key identified
+// by ctx.s0 set on ctx.key, or ctx.key set to nil otherwise.
+func RLockExistOrNot(cmd Cmd) Cmd {
+	return Cmd(func(ctx *Ctx) (interface{}, error) {
+		ctx.db.mu.RLock()
+		defer ctx.db.mu.RUnlock()
+
+		ctx.key = nil
+		if key, ok := ctx.db.keys[ctx.s0]; ok {
+			ctx.key = key
+		}
+		return cmd(ctx)
+	})
+}
+
 // RLockExistBranch read-locks the database and calls cmd with the key identified
 // by ctx.s0 if the key exists. It returns defRes and defErr is no such key exists.
 func RLockExistBranch(cmd Cmd, defRes interface{}, defErr error) Cmd {
