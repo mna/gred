@@ -137,6 +137,8 @@ func (c *Conn) do(cmd string, args ...string) error {
 		// Hashes commands
 	case "hdel":
 		res, err = cmdHdel(c.ctx)
+	case "hexists":
+		res, err = cmdHexists(c.ctx)
 	case "hget":
 		res, err = cmdHget(c.ctx)
 	case "hset":

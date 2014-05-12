@@ -16,10 +16,37 @@ var cmdHdel = CheckArgCount(
 						delete(h, nm)
 					}
 				}
+				if len(h) == 0 {
+					// Delete the key, no more fields (have to upgrade db lock)
+					ctx.db.mu.RUnlock()
+					ctx.db.mu.Lock()
+					// Abort any expiration
+					key.Abort()
+					// Delete from DB
+					delete(ctx.db.keys, key.Name())
+					// Downgrade db lock (so that RLockExistBranch is happy on exit)
+					ctx.db.mu.Unlock()
+					ctx.db.mu.RLock()
+				}
 				return cnt, nil
 			}
 			return nil, errInvalidKeyType
 		}, int64(0), nil), 2, -1)
+
+var cmdHexists = CheckArgCount(
+	RLockExistBranch(
+		func(ctx *Ctx) (interface{}, error) {
+			if key, ok := ctx.key.(HashKey); ok {
+				var ex int64
+
+				h := key.Get()
+				if _, ok := h[ctx.s1]; ok {
+					ex = 1
+				}
+				return ex, nil
+			}
+			return nil, errInvalidKeyType
+		}, int64(0), nil), 2, 2)
 
 var cmdHget = CheckArgCount(
 	RLockExistBranch(
