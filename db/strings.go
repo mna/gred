@@ -34,7 +34,7 @@ var cmdGet = CheckArgCount(
 				return key.Get(), nil
 			}
 			return nil, errInvalidKeyType
-		}, "", errNilSuccess), 1, 1)
+		}, nil, errNilSuccess), 1, 1)
 
 var cmdGetRange = CheckArgCount(
 	ParseIntArgs(

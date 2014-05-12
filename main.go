@@ -8,6 +8,7 @@ import (
 )
 
 // TODO : use glog as logging package
+// TODO : For optimization: http://confreaks.com/videos/3420-gophercon2014-building-high-performance-systems-in-go-what-s-new-and-best-practices
 
 func main() {
 	// Listen on TCP port 6379 on all interfaces.

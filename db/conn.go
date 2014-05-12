@@ -134,6 +134,14 @@ func (c *Conn) do(cmd string, args ...string) error {
 	case "strlen":
 		res, err = cmdStrLen(c.ctx)
 
+		// Hashes commands
+	case "hdel":
+		res, err = cmdHdel(c.ctx)
+	case "hget":
+		res, err = cmdHget(c.ctx)
+	case "hset":
+		res, err = cmdHset(c.ctx)
+
 	default:
 		err = errInvalidCommand
 	}
