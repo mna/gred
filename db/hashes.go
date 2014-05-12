@@ -8,7 +8,6 @@ var cmdHdel = CheckArgCount(
 			ctx.key.Lock()
 			defer ctx.key.Unlock()
 
-			// TODO : Removing the last field should delete the key
 			if key, ok := ctx.key.(HashKey); ok {
 				h := key.Get()
 				var cnt int64
@@ -84,7 +83,7 @@ var cmdHgetAll = CheckArgCount(
 				return ar, nil
 			}
 			return nil, errInvalidKeyType
-		}, resp.Array{}, nil), 1, 1)
+		}, emptyArray, nil), 1, 1)
 
 var cmdHkeys = CheckArgCount(
 	RLockExistBranch(
@@ -103,7 +102,7 @@ var cmdHkeys = CheckArgCount(
 				return ar, nil
 			}
 			return nil, errInvalidKeyType
-		}, resp.Array{}, nil), 1, 1)
+		}, emptyArray, nil), 1, 1)
 
 var cmdHlen = CheckArgCount(
 	RLockExistBranch(
@@ -169,3 +168,22 @@ var cmdHset = CheckArgCount(
 			}
 			return nil, errInvalidKeyType
 		}), 3, 3)
+
+var cmdHvals = CheckArgCount(
+	RLockExistBranch(
+		func(ctx *Ctx) (interface{}, error) {
+			ctx.key.RLock()
+			defer ctx.key.RUnlock()
+
+			if key, ok := ctx.key.(HashKey); ok {
+				h := key.Get()
+				ar := make(resp.Array, len(h))
+				i := 0
+				for _, v := range h {
+					ar[i] = v
+					i++
+				}
+				return ar, nil
+			}
+			return nil, errInvalidKeyType
+		}, emptyArray, nil), 1, 1)

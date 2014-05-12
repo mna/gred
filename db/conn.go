@@ -15,6 +15,10 @@ var (
 	// this common case.
 	ok = []byte("+OK\r\n")
 
+	// emptyArray is the unique empty array value used to return empty lists
+	// for this common case.
+	emptyArray = resp.Array{}
+
 	// defaultDb is the default database used by all new connections (db 0).
 	defaultDb = NewDB(0)
 
@@ -151,6 +155,8 @@ func (c *Conn) do(cmd string, args ...string) error {
 		res, err = cmdHmget(c.ctx)
 	case "hset":
 		res, err = cmdHset(c.ctx)
+	case "hvals":
+		res, err = cmdHvals(c.ctx)
 
 	default:
 		err = errInvalidCommand
