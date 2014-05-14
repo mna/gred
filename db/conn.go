@@ -159,6 +159,16 @@ func (c *Conn) do(cmd string, args ...string) error {
 	case "hvals":
 		res, err = cmdHvals(c.ctx)
 
+		// Lists commands
+	case "lpop":
+		res, err = cmdLpop(c.ctx)
+	case "lpush":
+		res, err = cmdLpush(c.ctx)
+	case "rpop":
+		res, err = cmdRpop(c.ctx)
+	case "rpush":
+		res, err = cmdRpush(c.ctx)
+
 	default:
 		err = errInvalidCommand
 	}
