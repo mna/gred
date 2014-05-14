@@ -22,6 +22,19 @@ var cmdLindex = CheckArgCount(
 				return nil, errInvalidKeyType
 			}, nil, errNilSuccess), 1), 2, 2)
 
+var cmdLlen = CheckArgCount(
+	RLockExistBranch(
+		func(ctx *Ctx) (interface{}, error) {
+			ctx.key.RLock()
+			defer ctx.key.RUnlock()
+
+			if key, ok := ctx.key.(ListKey); ok {
+				l := key.Get()
+				return int64(len(*l)), nil
+			}
+			return nil, errInvalidKeyType
+		}, int64(0), nil), 1, 1)
+
 var cmdLpop = CheckArgCount(
 	RLockExistBranch(
 		func(ctx *Ctx) (interface{}, error) {
