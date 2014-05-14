@@ -160,6 +160,8 @@ func (c *Conn) do(cmd string, args ...string) error {
 		res, err = cmdHvals(c.ctx)
 
 		// Lists commands
+	case "lindex":
+		res, err = cmdLindex(c.ctx)
 	case "lpop":
 		res, err = cmdLpop(c.ctx)
 	case "lpush":

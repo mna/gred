@@ -1,5 +1,27 @@
 package db
 
+// Lindex is actually O(1) here, better than Redis' O(n)
+var cmdLindex = CheckArgCount(
+	ParseIntArgs(
+		RLockExistBranch(
+			func(ctx *Ctx) (interface{}, error) {
+				ctx.key.RLock()
+				defer ctx.key.RUnlock()
+
+				if key, ok := ctx.key.(ListKey); ok {
+					l := key.Get()
+					ln := len(*l)
+					if ctx.i0 < 0 {
+						ctx.i0 = ln + ctx.i0
+					}
+					if ctx.i0 >= 0 && ctx.i0 < ln {
+						return (*l)[ctx.i0], nil
+					}
+					return nil, errNilSuccess
+				}
+				return nil, errInvalidKeyType
+			}, nil, errNilSuccess), 1), 2, 2)
+
 var cmdLpop = CheckArgCount(
 	RLockExistBranch(
 		func(ctx *Ctx) (interface{}, error) {
