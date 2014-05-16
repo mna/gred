@@ -74,7 +74,7 @@ var cmdLpush = CheckArgCount(
 				name:    ctx.s0,
 				l:       &l,
 			}
-			l.lpush(ctx.raw[1:]...)
+			l.lpushr(ctx.raw[1:]...)
 			ctx.db.keys[ctx.s0] = key
 			return int64(len(l)), nil
 		},
@@ -84,7 +84,7 @@ var cmdLpush = CheckArgCount(
 
 			if key, ok := ctx.key.(ListKey); ok {
 				l := key.Get()
-				l.lpush(ctx.raw[1:]...)
+				l.lpushr(ctx.raw[1:]...)
 				return int64(len(*l)), nil
 			}
 			return nil, errInvalidKeyType

@@ -1,6 +1,9 @@
 package db
 
-import "sync"
+import (
+	"sort"
+	"sync"
+)
 
 var _ ListKey = (*listKey)(nil)
 
@@ -8,7 +11,9 @@ const defaultListCap int = 10
 
 type list []string
 
-func (l *list) lpush(vals ...string) {
+func (l *list) lpushr(vals ...string) {
+	// Reverse sort, then append
+	sort.Sort(sort.Reverse(sort.StringSlice(vals)))
 	*l = append(vals, *l...)
 }
 

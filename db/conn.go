@@ -173,6 +173,12 @@ func (c *Conn) do(cmd string, args ...string) error {
 	case "rpush":
 		res, err = cmdRpush(c.ctx)
 
+		// Sets commands
+	case "sadd":
+		res, err = cmdSadd(c.ctx)
+	case "scard":
+		res, err = cmdScard(c.ctx)
+
 	default:
 		err = errInvalidCommand
 	}
