@@ -36,6 +36,8 @@ func encodeValue(w io.Writer, v interface{}) error {
 		return encodeSimpleString(w, v)
 	case Error:
 		return encodeError(w, v)
+	case int:
+		return encodeInteger(w, int64(v))
 	case int64:
 		return encodeInteger(w, v)
 	case string:
