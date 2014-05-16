@@ -1,6 +1,8 @@
-package types
+package vals
 
 type Set interface {
+	Value
+
 	SAdd(...string) int
 	SCard() int
 	SDiff(Set, ...Set) []string

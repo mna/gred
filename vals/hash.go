@@ -1,6 +1,8 @@
-package types
+package vals
 
 type Hash interface {
+	Value
+
 	HDel(string, ...string) int
 	HExists(string) bool
 	HGet(string) (string, bool)

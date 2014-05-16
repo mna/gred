@@ -1,6 +1,8 @@
-package types
+package vals
 
 type List interface {
+	Value
+
 	LIndex(int) (string, bool)
 	LInsertBefore(string, string) int
 	LInsertAfter(string, string) int
