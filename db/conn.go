@@ -3,7 +3,6 @@ package db
 import (
 	"bufio"
 	"errors"
-	"io"
 	"net"
 	"strings"
 
@@ -66,7 +65,7 @@ func (c *Conn) Handle() error {
 		ar, err := resp.DecodeRequest(br)
 		if err != nil {
 			// Network error, return
-			if err == io.EOF || err == io.ErrClosedPipe {
+			if _, ok := err.(net.Error); ok {
 				return err
 			}
 			// Write the error to the client

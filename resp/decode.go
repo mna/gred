@@ -90,17 +90,18 @@ func DecodeRequest(r BytesReader) ([]string, error) {
 
 // Decode decodes the provided byte slice and returns the parsed value.
 func Decode(r BytesReader) (interface{}, error) {
-	val, err := decodeValue(r)
-	return val, err
+	return decodeValue(r)
 }
 
 // decodeValue parses the byte slice and decodes the value based on its
 // prefix, as defined by the RESP protocol.
-func decodeValue(r BytesReader) (val interface{}, err error) {
+func decodeValue(r BytesReader) (interface{}, error) {
 	ch, err := r.ReadByte()
 	if err != nil {
-		return val, err
+		return nil, err
 	}
+
+	var val interface{}
 	switch ch {
 	case '+':
 		// Simple string
@@ -185,7 +186,7 @@ func decodeBulkString(r BytesReader) (interface{}, error) {
 		for {
 			nb, err := r.Read(buf[got:])
 			if err != nil {
-				return nil, ErrInvalidBulkString
+				return nil, err
 			}
 			got += nb
 			if int64(got) == need {
@@ -237,7 +238,10 @@ loop:
 		return 0, ErrMissingCRLF
 	}
 	// Presume next byte was \n
-	r.ReadByte()
+	_, err = r.ReadByte()
+	if err != nil {
+		return 0, err
+	}
 	return sign * val, nil
 }
 
@@ -249,7 +253,10 @@ func decodeSimpleString(r BytesReader) (interface{}, error) {
 		return nil, err
 	}
 	// Presume next byte was \n
-	r.ReadByte()
+	_, err = r.ReadByte()
+	if err != nil {
+		return nil, err
+	}
 	return string(v[:len(v)-1]), nil
 }
 
