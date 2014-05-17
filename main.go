@@ -6,7 +6,9 @@ import (
 	"log"
 	"net"
 
-	"github.com/PuerkitoBio/gred/db"
+	"github.com/PuerkitoBio/gred/cmds"
+	_ "github.com/PuerkitoBio/gred/cmds/strings"
+	gnet "github.com/PuerkitoBio/gred/net"
 	"github.com/golang/glog"
 )
 
@@ -24,6 +26,13 @@ const (
 func main() {
 	flag.Parse()
 	defer glog.Flush()
+
+	// Print registered commands
+	if glog.V(2) {
+		for k := range cmds.Cmds {
+			glog.Infof("registered: %s", k)
+		}
+	}
 
 	// Listen on TCP.
 	l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
@@ -51,10 +60,10 @@ func main() {
 		// The loop then returns to accepting, so that
 		// multiple connections may be served concurrently.
 		go func(c net.Conn) {
-			conn := db.NewConn(c)
+			conn := gnet.NewConn(c)
 			err := conn.Handle()
 			if err != nil {
-				log.Println("ERROR: ", err)
+				glog.Errorf("handle connection: %s", err)
 			}
 		}(conn)
 	}
