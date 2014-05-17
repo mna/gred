@@ -7,7 +7,7 @@ import (
 	"net"
 
 	"github.com/PuerkitoBio/gred/cmds"
-	_ "github.com/PuerkitoBio/gred/cmds/strings"
+	_ "github.com/PuerkitoBio/gred/cmds/dbcmds"
 	gnet "github.com/PuerkitoBio/gred/net"
 	"github.com/golang/glog"
 )
