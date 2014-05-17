@@ -1,8 +1,10 @@
 package srv
 
+import "sync"
+
 type RWLocker interface {
-	Lock()
-	Unlock()
+	sync.Locker
+
 	RLock()
 	RUnlock()
 	RequireExclusive()
