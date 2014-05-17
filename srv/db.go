@@ -47,11 +47,10 @@ func (d *db) Key(name string, flag NoKeyFlag) (Key, func()) {
 		return k, ret
 	}
 
-	glog.V(2).Infof("db %d: key %s did not exist", d.ix, name)
+	glog.V(2).Infof("db %d: key %s does not exist", d.ix, name)
 	// Key does not exist, what to do?
 	if flag == NoKeyNone {
-		// TODO : Return the pre-allocated empty key that returns good default values for all commands
-		return nil, ret
+		return defKey(name), ret
 	}
 	// Otherwise, upgrade lock
 	d.RUnlock()
