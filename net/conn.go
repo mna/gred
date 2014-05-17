@@ -1,11 +1,13 @@
-package srv
+package net
 
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 
+	"github.com/PuerkitoBio/gred/cmds"
 	"github.com/PuerkitoBio/gred/resp"
 )
 
@@ -19,8 +21,7 @@ type Conn interface {
 type conn struct {
 	net.Conn
 
-	db   DB
-	quit bool
+	db DB
 }
 
 // NewConn creates a new Conn for the underlying net.Conn network
@@ -56,13 +57,40 @@ func (c *conn) Handle() error {
 		}
 
 		// Run the command
-		err = c.do(ar[0], ar[1:]...)
+		if cmd, ok := cmds.Cmds[ar[0]]; ok {
+			err = c.writeResponse(cmd.ParseAndExec(ar[1:]))
+		} else {
+			err = c.writeResponse(nil, fmt.Errorf("ERR unknown command '%s'", ar[0]))
+		}
 		if err != nil {
 			return err
 		}
-		if c.quit {
-			// Quit command, asked to close connection.
-			return nil
+	}
+}
+
+// writeResponse writes the response to the network connection.
+func (c *conn) writeResponse(res interface{}, err error) error {
+	switch err {
+	case errNilSuccess:
+		// Special-case for success but nil return value
+		return resp.Encode(c, nil)
+
+	case errPong:
+		// Special-case for pong response
+		_, err = c.Write(pong)
+		return err
+
+	case nil:
+		if res == nil {
+			// If the result is nil, send the OK response
+			_, err = c.Write(ok)
+			return err
 		}
+		// Otherwise encode the response
+		return resp.Encode(c, res)
+
+	default:
+		// Return the non-nil error
+		return resp.Encode(c, resp.Error(err.Error()))
 	}
 }

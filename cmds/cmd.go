@@ -1,27 +1,45 @@
 package cmds
 
-import "github.com/PuerkitoBio/gred/srv"
+import (
+	"errors"
+	"fmt"
 
-type NoKeyFlag int
-
-const (
-	NoKeyNone NoKeyFlag = iota
-	NoKeyCreateString
-	NoKeyCreateHash
-	NoKeyCreateList
-	NoKeyCreateSet
-	NoKeyCreateSortedSet
+	"github.com/PuerkitoBio/gred/srv"
 )
 
+var (
+	ErrInvalidValType = errors.New("ERR Operation against a key holding the wrong kind of value")
+)
+
+var Cmds = make(map[string]Cmd)
+
+func Register(name string, c Cmd) {
+	if name == "" {
+		panic("cmds: call Register with empty command name")
+	}
+	if _, ok := Cmds[name]; ok {
+		panic(fmt.Sprintf("cmds: command %s already registered", name))
+	}
+	Cmds[name] = Cmd
+}
+
 type Cmd interface {
+	ParseAndExec([]string) (interface{}, error)
 	IntArgIndices() []int
 	FloatArgIndices() []int
 	NumArgs() (int, int)
-	Do([]string, []int, []float64) (interface{}, error)
 }
 
+type DBCmd interface {
+	Cmd
+
+	ExecWithDB(srv.DB, []string, []int, []float64) (interface{}, error)
+}
+
+var _ DBCmd = (*dbCmd)(nil)
+
 type dbCmd struct {
-	db srv.DB
+	fn func(srv.Key, []string, []int, []float64) (interface{}, error)
 
 	noKey            NoKeyFlag
 	floatIndices     []int
@@ -29,7 +47,13 @@ type dbCmd struct {
 	minArgs, maxArgs int
 }
 
-func (c *cmd) Do(args []string, ints []int, floats []float64) (interface{}, error) {
+func (c *dbCmd) IntArgIndices() []int       { return c.intIndices }
+func (c *dbCmd) FloatArgIndices() []float64 { return c.floatIndices }
+func (c *dbCmd) NumArgs() (int, int)        { return c.minArgs, c.maxArgs }
 
-	k := c.db.Key(args[0])
+func (c *dbCmd) ExecWithDB(db srv.DB, args []string, ints []int, floats []float64) (interface{}, error) {
+	k, def := c.db.Key(args[0], c.noKey)
+	defer def() // Unlock the db
+
+	return c.fn(k, args, ints, floats)
 }

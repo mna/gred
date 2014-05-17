@@ -7,5 +7,4 @@ type RWLocker interface {
 
 	RLock()
 	RUnlock()
-	RequireExclusive()
 }
