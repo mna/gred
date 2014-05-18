@@ -23,6 +23,7 @@ const (
 type DB interface {
 	RWLocker
 
+	Del(string) bool
 	Key(string) Key
 	LockGetKey(string, NoKeyFlag) (Key, func())
 }
@@ -39,6 +40,14 @@ func NewDB(ix int) DB {
 		ix:   ix,
 		keys: make(map[string]Key),
 	}
+}
+
+func (d *db) Del(name string) bool {
+	if _, ok := d.keys[name]; ok {
+		delete(d.keys, name)
+		return true
+	}
+	return false
 }
 
 func (d *db) Key(name string) Key {
@@ -66,12 +75,13 @@ func (d *db) LockGetKey(name string, flag NoKeyFlag) (Key, func()) {
 	d.RUnlock()
 	d.Lock()
 	ret = d.Unlock
+	var k Key
 	switch flag {
 	case NoKeyCreateString:
-		k := newKey(name, vals.NewString())
-		d.keys[name] = k
-		return k, ret
+		k = newKey(name, vals.NewString())
 	default:
 		panic(fmt.Sprintf("db.Key NoKeyFlag not implemented: %d", flag))
 	}
+	d.keys[name] = k
+	return k, ret
 }

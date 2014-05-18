@@ -6,8 +6,9 @@ import (
 	"log"
 	"net"
 
-	"github.com/PuerkitoBio/gred/cmds"
-	_ "github.com/PuerkitoBio/gred/cmds/dbcmds"
+	"github.com/PuerkitoBio/gred/cmd"
+	_ "github.com/PuerkitoBio/gred/cmd/keys"
+	_ "github.com/PuerkitoBio/gred/cmd/strings"
 	gnet "github.com/PuerkitoBio/gred/net"
 	"github.com/golang/glog"
 )
@@ -29,7 +30,7 @@ func main() {
 
 	// Print registered commands
 	if glog.V(2) {
-		for k := range cmds.Cmds {
+		for k := range cmd.Commands {
 			glog.Infof("registered: %s", k)
 		}
 	}
@@ -54,7 +55,7 @@ func main() {
 			}
 		}
 		errcnt = 0
-		glog.V(2).Infof("connection received: %s", conn.RemoteAddr())
+		glog.V(2).Infof("connection accepted: %s", conn.RemoteAddr())
 
 		// Handle the connection in a new goroutine.
 		// The loop then returns to accepting, so that

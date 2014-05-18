@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/PuerkitoBio/gred/cmds"
+	"github.com/PuerkitoBio/gred/cmd"
 	"github.com/PuerkitoBio/gred/resp"
 	"github.com/PuerkitoBio/gred/srv"
 )
@@ -32,7 +32,6 @@ type Conn interface {
 // conn represents a network connection to the server.
 type conn struct {
 	net.Conn
-
 	db srv.DB
 }
 
@@ -64,7 +63,7 @@ func (c *conn) Handle() error {
 			err = resp.Encode(c, resp.Error(err.Error()))
 			if err != nil {
 				// If write failed, return
-				return errors.New("db.Conn.Handle: encode failed: " + err.Error())
+				return errors.New("db.Conn.Handle: write failed: " + err.Error())
 			}
 			continue
 		}
@@ -72,14 +71,14 @@ func (c *conn) Handle() error {
 		// Run the command
 		var res interface{}
 		var rerr error
-		if cmd, ok := cmds.Cmds[strings.ToLower(ar[0])]; ok {
-			args, ints, floats, err := c.parseArgs(cmd, ar[0], ar[1:])
+		if cd, ok := cmd.Commands[strings.ToLower(ar[0])]; ok {
+			args, ints, floats, err := c.parseArgs(cd, ar[0], ar[1:])
 			if err != nil {
 				rerr = err
 			} else {
-				switch cmd := cmd.(type) {
-				case cmds.DBCmd:
-					res, rerr = cmd.ExecWithDB(c.db, args, ints, floats)
+				switch cd := cd.(type) {
+				case cmd.DBCmd:
+					res, rerr = cd.ExecWithDB(c.db, args, ints, floats)
 				}
 			}
 		} else {
@@ -92,15 +91,15 @@ func (c *conn) Handle() error {
 	}
 }
 
-func (c *conn) parseArgs(cmd cmds.Cmd, name string, args []string) ([]string, []int, []float64, error) {
+func (c *conn) parseArgs(cd cmd.Cmd, name string, args []string) ([]string, []int, []float64, error) {
 	l := len(args)
-	min, max := cmd.NumArgs()
-	if l < min || (l > max && max >= 0) {
+	ad := cd.GetArgDef()
+	if l < ad.MinArgs || (l > ad.MaxArgs && ad.MaxArgs >= 0) {
 		return nil, nil, nil, fmt.Errorf("ERR wrong number of arguments for '%s' command", name)
 	}
 
 	// Parse integers
-	intix := cmd.IntArgIndices()
+	intix := ad.IntIndices
 	ints := make([]int, len(intix))
 	for i, ix := range intix {
 		if ix < 0 {
@@ -114,7 +113,7 @@ func (c *conn) parseArgs(cmd cmds.Cmd, name string, args []string) ([]string, []
 	}
 
 	// Parse floats
-	fix := cmd.FloatArgIndices()
+	fix := ad.FloatIndices
 	floats := make([]float64, len(fix))
 	for i, ix := range fix {
 		if ix < 0 {
@@ -132,11 +131,11 @@ func (c *conn) parseArgs(cmd cmds.Cmd, name string, args []string) ([]string, []
 // writeResponse writes the response to the network connection.
 func (c *conn) writeResponse(res interface{}, err error) error {
 	switch err {
-	case cmds.ErrNilSuccess:
+	case cmd.ErrNilSuccess:
 		// Special-case for success but nil return value
 		return resp.Encode(c, nil)
 
-	case cmds.ErrPong:
+	case cmd.ErrPong:
 		// Special-case for pong response
 		_, err = c.Write(pong)
 		return err
