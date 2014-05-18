@@ -12,6 +12,7 @@ type NoKeyFlag int
 
 const (
 	NoKeyNone NoKeyFlag = iota
+	NoKeyDefaultVal
 	NoKeyCreateString
 	NoKeyCreateHash
 	NoKeyCreateList
@@ -22,7 +23,8 @@ const (
 type DB interface {
 	RWLocker
 
-	Key(string, NoKeyFlag) (Key, func())
+	Key(string) Key
+	LockGetKey(string, NoKeyFlag) (Key, func())
 }
 
 type db struct {
@@ -39,7 +41,11 @@ func NewDB(ix int) DB {
 	}
 }
 
-func (d *db) Key(name string, flag NoKeyFlag) (Key, func()) {
+func (d *db) Key(name string) Key {
+	return d.keys[name]
+}
+
+func (d *db) LockGetKey(name string, flag NoKeyFlag) (Key, func()) {
 	d.RLock()
 	ret := d.RUnlock
 	if k, ok := d.keys[name]; ok {
@@ -49,9 +55,13 @@ func (d *db) Key(name string, flag NoKeyFlag) (Key, func()) {
 
 	glog.V(2).Infof("db %d: key %s does not exist", d.ix, name)
 	// Key does not exist, what to do?
-	if flag == NoKeyNone {
+	switch flag {
+	case NoKeyNone:
+		return nil, ret
+	case NoKeyDefaultVal:
 		return defKey(name), ret
 	}
+
 	// Otherwise, upgrade lock
 	d.RUnlock()
 	d.Lock()

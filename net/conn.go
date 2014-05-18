@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strconv"
 	"strings"
 
 	"github.com/PuerkitoBio/gred/cmds"
@@ -17,6 +18,9 @@ var (
 	pong  = []byte("+PONG\r\n")
 	ok    = []byte("+OK\r\n")
 	defdb = srv.NewDB(0)
+
+	errArgNotInteger = errors.New("ERR value is not an integer or out of range")
+	errArgNotFloat   = errors.New("ERR value is not a valid float")
 )
 
 type Conn interface {
@@ -48,7 +52,6 @@ func (c *conn) Handle() error {
 
 	br := bufio.NewReader(c)
 
-	var res interface{}
 	for {
 		// Get the request
 		ar, err := resp.DecodeRequest(br)
@@ -67,24 +70,63 @@ func (c *conn) Handle() error {
 		}
 
 		// Run the command
+		var res interface{}
+		var rerr error
 		if cmd, ok := cmds.Cmds[strings.ToLower(ar[0])]; ok {
-			args, ints, floats := c.parseArgs(cmd, ar[1:])
-			switch cmd := cmd.(type) {
-			case cmds.DBCmd:
-				res, err = cmd.ExecWithDB(c.db, args, ints, floats)
+			args, ints, floats, err := c.parseArgs(cmd, ar[0], ar[1:])
+			if err != nil {
+				rerr = err
+			} else {
+				switch cmd := cmd.(type) {
+				case cmds.DBCmd:
+					res, rerr = cmd.ExecWithDB(c.db, args, ints, floats)
+				}
 			}
-			err = c.writeResponse(res, err)
 		} else {
-			err = c.writeResponse(nil, fmt.Errorf("ERR unknown command '%s'", ar[0]))
+			rerr = fmt.Errorf("ERR unknown command '%s'", ar[0])
 		}
+		err = c.writeResponse(res, rerr)
 		if err != nil {
 			return err
 		}
 	}
 }
 
-func (c *conn) parseArgs(cmd cmds.Cmd, args []string) ([]string, []int, []float64) {
-	return args, nil, nil
+func (c *conn) parseArgs(cmd cmds.Cmd, name string, args []string) ([]string, []int, []float64, error) {
+	l := len(args)
+	min, max := cmd.NumArgs()
+	if l < min || (l > max && max >= 0) {
+		return nil, nil, nil, fmt.Errorf("ERR wrong number of arguments for '%s' command", name)
+	}
+
+	// Parse integers
+	intix := cmd.IntArgIndices()
+	ints := make([]int, len(intix))
+	for i, ix := range intix {
+		if ix < 0 {
+			ix = l + ix
+		}
+		val, err := strconv.Atoi(args[ix])
+		if err != nil {
+			return nil, nil, nil, errArgNotInteger
+		}
+		ints[i] = val
+	}
+
+	// Parse floats
+	fix := cmd.FloatArgIndices()
+	floats := make([]float64, len(fix))
+	for i, ix := range fix {
+		if ix < 0 {
+			ix = l + ix
+		}
+		val, err := strconv.ParseFloat(args[ix], 64)
+		if err != nil {
+			return nil, nil, nil, errArgNotFloat
+		}
+		floats[i] = val
+	}
+	return args, ints, floats, nil
 }
 
 // writeResponse writes the response to the network connection.
