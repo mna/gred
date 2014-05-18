@@ -6,6 +6,9 @@ import (
 	"strconv"
 )
 
+// TODO : Make alloc optimizations here instead of in the app (+OK\r\n, pong,
+// bool 1 and 0, nil).
+
 // ErrInvalidValue is returned if the value to encode is invalid.
 var ErrInvalidValue = errors.New("resp: invalid value")
 
@@ -36,6 +39,11 @@ func encodeValue(w io.Writer, v interface{}) error {
 		return encodeSimpleString(w, v)
 	case Error:
 		return encodeError(w, v)
+	case bool:
+		if v {
+			return encodeInteger(w, 1)
+		}
+		return encodeInteger(w, 0)
 	case int:
 		return encodeInteger(w, int64(v))
 	case int64:

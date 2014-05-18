@@ -31,7 +31,7 @@ type Cmd interface {
 
 type DBCmd interface {
 	Cmd
-	ExecWithDB(srv.DB, []string, []int, []float64) (interface{}, error)
+	ExecWithDB(srv.DB, []string, []int64, []float64) (interface{}, error)
 }
 
 type ArgDef struct {
@@ -44,7 +44,7 @@ func (a *ArgDef) GetArgDef() *ArgDef { return a }
 
 var _ DBCmd = (*singleKeyCmd)(nil)
 
-type KeyFn func(srv.Key, []string, []int, []float64) (interface{}, error)
+type KeyFn func(srv.Key, []string, []int64, []float64) (interface{}, error)
 
 func NewSingleKeyCmd(arg *ArgDef, noKeyFlag srv.NoKeyFlag, fn KeyFn) DBCmd {
 	return &singleKeyCmd{
@@ -60,7 +60,7 @@ type singleKeyCmd struct {
 	fn    KeyFn
 }
 
-func (c *singleKeyCmd) ExecWithDB(db srv.DB, args []string, ints []int, floats []float64) (interface{}, error) {
+func (c *singleKeyCmd) ExecWithDB(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
 	k, def := db.LockGetKey(args[0], c.noKey)
 	defer def()
 
@@ -69,7 +69,7 @@ func (c *singleKeyCmd) ExecWithDB(db srv.DB, args []string, ints []int, floats [
 
 var _ DBCmd = (*dbCmd)(nil)
 
-type DBFn func(srv.DB, []string, []int, []float64) (interface{}, error)
+type DBFn func(srv.DB, []string, []int64, []float64) (interface{}, error)
 
 func NewDBCmd(arg *ArgDef, fn DBFn) DBCmd {
 	return &dbCmd{
@@ -83,6 +83,6 @@ type dbCmd struct {
 	fn DBFn
 }
 
-func (d *dbCmd) ExecWithDB(db srv.DB, args []string, ints []int, floats []float64) (interface{}, error) {
+func (d *dbCmd) ExecWithDB(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
 	return d.fn(db, args, ints, floats)
 }

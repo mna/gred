@@ -91,7 +91,7 @@ func (c *conn) Handle() error {
 	}
 }
 
-func (c *conn) parseArgs(cd cmd.Cmd, name string, args []string) ([]string, []int, []float64, error) {
+func (c *conn) parseArgs(cd cmd.Cmd, name string, args []string) ([]string, []int64, []float64, error) {
 	l := len(args)
 	ad := cd.GetArgDef()
 	if l < ad.MinArgs || (l > ad.MaxArgs && ad.MaxArgs >= 0) {
@@ -100,12 +100,12 @@ func (c *conn) parseArgs(cd cmd.Cmd, name string, args []string) ([]string, []in
 
 	// Parse integers
 	intix := ad.IntIndices
-	ints := make([]int, len(intix))
+	ints := make([]int64, len(intix))
 	for i, ix := range intix {
 		if ix < 0 {
 			ix = l + ix
 		}
-		val, err := strconv.Atoi(args[ix])
+		val, err := strconv.ParseInt(args[ix], 10, 64)
 		if err != nil {
 			return nil, nil, nil, errArgNotInteger
 		}

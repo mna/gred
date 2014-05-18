@@ -8,6 +8,11 @@ import (
 
 var dv defVal
 
+var (
+	_ Key         = (*defKey)(nil)
+	_ vals.String = (*defVal)(nil)
+)
+
 type defKey string
 
 func (d defKey) Lock()                             {}
@@ -26,9 +31,9 @@ type defVal struct{}
 func (d defVal) Type() string { panic("Type called on defKey value") }
 
 // String implementation
-func (d defVal) Append(_ string) int      { return 0 }
-func (d defVal) Get() string              { return "" }
-func (d defVal) GetRange(_, _ int) string { return "" }
-func (d defVal) GetSet(_ string) string   { return "" }
-func (d defVal) Set(_ string)             {}
-func (d defVal) StrLen() int              { return 0 }
+func (d defVal) Append(_ string) int64      { return 0 }
+func (d defVal) Get() string                { return "" }
+func (d defVal) GetRange(_, _ int64) string { return "" }
+func (d defVal) GetSet(_ string) string     { return "" }
+func (d defVal) Set(_ string)               {}
+func (d defVal) StrLen() int64              { return 0 }

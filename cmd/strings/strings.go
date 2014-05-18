@@ -24,7 +24,7 @@ var append_ = cmd.NewSingleKeyCmd(
 	srv.NoKeyCreateString,
 	appendFn)
 
-func appendFn(k srv.Key, args []string, ints []int, floats []float64) (interface{}, error) {
+func appendFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
 	k.Lock()
 	defer k.Unlock()
 
@@ -43,7 +43,7 @@ var get = cmd.NewSingleKeyCmd(
 	srv.NoKeyDefaultVal,
 	getFn)
 
-func getFn(k srv.Key, args []string, ints []int, floats []float64) (interface{}, error) {
+func getFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
 	k.RLock()
 	defer k.RUnlock()
 
@@ -63,7 +63,7 @@ var getrange = cmd.NewSingleKeyCmd(
 	srv.NoKeyDefaultVal,
 	getrangeFn)
 
-func getrangeFn(k srv.Key, args []string, ints []int, floats []float64) (interface{}, error) {
+func getrangeFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
 	k.RLock()
 	defer k.RUnlock()
 
@@ -82,7 +82,7 @@ var getset = cmd.NewSingleKeyCmd(
 	srv.NoKeyCreateString,
 	getsetFn)
 
-func getsetFn(k srv.Key, args []string, ints []int, floats []float64) (interface{}, error) {
+func getsetFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
 	k.Lock()
 	defer k.Unlock()
 
@@ -102,7 +102,7 @@ var set = cmd.NewSingleKeyCmd(
 	srv.NoKeyCreateString,
 	setFn)
 
-func setFn(k srv.Key, args []string, ints []int, floats []float64) (interface{}, error) {
+func setFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
 	k.Lock()
 	defer k.Unlock()
 
@@ -123,7 +123,7 @@ var strlen = cmd.NewSingleKeyCmd(
 	srv.NoKeyDefaultVal,
 	strlenFn)
 
-func strlenFn(k srv.Key, args []string, ints []int, floats []float64) (interface{}, error) {
+func strlenFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
 	k.RLock()
 	defer k.RUnlock()
 
