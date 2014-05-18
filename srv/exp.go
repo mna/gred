@@ -4,7 +4,7 @@ import "time"
 
 // Expirer is the interface that defines the methods to manage expiration.
 type Expirer interface {
-	Expire(time.Time, func()) bool
+	Expire(time.Duration, func()) bool
 	TTL() time.Duration
 	Abort() bool
 }
@@ -18,18 +18,17 @@ type expirer struct {
 // Expire sets the key to expire at time t, at which point function fn will
 // be executed in its own goroutine. It returns true if expiration was
 // successfully set, false otherwise.
-func (e *expirer) Expire(t time.Time, fn func()) bool {
-	dur := t.Sub(time.Now())
+func (e *expirer) Expire(dur time.Duration, fn func()) bool {
 	if e.tmr != nil {
 		set := e.tmr.Reset(dur)
 		if set {
-			e.expAt = t
+			e.expAt = time.Now().Add(dur)
 		}
 		return set
 	}
 
 	e.tmr = time.AfterFunc(dur, fn)
-	e.expAt = t
+	e.expAt = time.Now().Add(dur)
 	return true
 }
 

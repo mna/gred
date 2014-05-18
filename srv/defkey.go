@@ -15,14 +15,14 @@ var (
 
 type defKey string
 
-func (d defKey) Lock()                             {}
-func (d defKey) Unlock()                           {}
-func (d defKey) RLock()                            {}
-func (d defKey) RUnlock()                          {}
-func (d defKey) Expire(_ time.Time, _ func()) bool { return true }
-func (d defKey) TTL() time.Duration                { return 0 }
-func (d defKey) Abort() bool                       { return true }
-func (d defKey) Val() vals.Value                   { return dv }
+func (d defKey) Lock()                                 {}
+func (d defKey) Unlock()                               {}
+func (d defKey) RLock()                                {}
+func (d defKey) RUnlock()                              {}
+func (d defKey) Expire(_ time.Duration, _ func()) bool { return true }
+func (d defKey) TTL() time.Duration                    { return 0 }
+func (d defKey) Abort() bool                           { return true }
+func (d defKey) Val() vals.Value                       { return dv }
 
 func (d defKey) Name() string { return string(d) }
 

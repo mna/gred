@@ -31,6 +31,8 @@ type DB interface {
 	Persist(string) bool
 	PExpire(string, int64, func()) bool
 	PExpireAt(string, int64, func()) bool
+	PTTL(string) int64
+	TTL(string) int64
 
 	Key(string) Key
 	LockGetKey(string, NoKeyFlag) (Key, func())
@@ -70,25 +72,30 @@ func (d *db) Exists(name string) bool {
 }
 
 func (d *db) Expire(name string, secs int64, fn func()) bool {
-	if k, ok := d.keys[name]; ok {
-		k.Lock()
-		defer k.Unlock()
-		return k.Expire(time.Now().Add(time.Duration(secs)*time.Second), fn)
-	}
-	return false
+	return d.expireDuration(name, time.Duration(secs)*time.Second, fn)
 }
 
 func (d *db) ExpireAt(name string, uxts int64, fn func()) bool {
 	secs := uxts - time.Now().Unix()
-	return d.Expire(name, secs, fn)
+	return d.expireDuration(name, time.Duration(secs)*time.Second, fn)
 }
 
 func (d *db) PExpire(name string, ms int64, fn func()) bool {
-
+	return d.expireDuration(name, time.Duration(ms)*time.Millisecond, fn)
 }
 
 func (d *db) PExpireAt(name string, uxts int64, fn func()) bool {
+	dur := (time.Duration(uxts) * time.Millisecond) - time.Duration(time.Now().UnixNano())
+	return d.expireDuration(name, dur, fn)
+}
 
+func (d *db) expireDuration(name string, dur time.Duration, fn func()) bool {
+	if k, ok := d.keys[name]; ok {
+		k.Lock()
+		defer k.Unlock()
+		return k.Expire(dur, fn)
+	}
+	return false
 }
 
 func (d *db) Persist(name string) bool {
@@ -98,6 +105,32 @@ func (d *db) Persist(name string) bool {
 		return k.Abort()
 	}
 	return false
+}
+
+func (d *db) PTTL(name string) int64 {
+	if k, ok := d.keys[name]; ok {
+		k.RLock()
+		defer k.RUnlock()
+		ttl := k.TTL()
+		if ttl < 0 {
+			return int64(ttl)
+		}
+		return int64(ttl / time.Millisecond)
+	}
+	return -2
+}
+
+func (d *db) TTL(name string) int64 {
+	if k, ok := d.keys[name]; ok {
+		k.RLock()
+		defer k.RUnlock()
+		ttl := k.TTL()
+		if ttl < 0 {
+			return int64(ttl)
+		}
+		return int64(ttl / time.Second)
+	}
+	return -2
 }
 
 func (d *db) Key(name string) Key {
