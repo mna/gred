@@ -13,6 +13,10 @@ type String interface {
 
 type stringval string
 
+func NewString() String {
+	return new(stringval)
+}
+
 func (s *stringval) Type() string {
 	return "string"
 }
@@ -61,8 +65,4 @@ func (s *stringval) Set(v string) {
 
 func (s *stringval) StrLen() int64 {
 	return int64(len(*s))
-}
-
-func NewString() String {
-	return new(stringval)
 }

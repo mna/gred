@@ -8,9 +8,12 @@ import (
 
 var dv defVal
 
+var empty = []string{}
+
 var (
 	_ Key         = (*defKey)(nil)
 	_ vals.String = (*defVal)(nil)
+	_ vals.Hash   = (*defVal)(nil)
 )
 
 type defKey string
@@ -37,3 +40,16 @@ func (d defVal) GetRange(_, _ int64) string { return "" }
 func (d defVal) GetSet(_ string) string     { return "" }
 func (d defVal) Set(_ string)               {}
 func (d defVal) StrLen() int64              { return 0 }
+
+// Hashes implementation
+func (d defVal) HDel(_ ...string) int64               { return 0 }
+func (d defVal) HExists(_ string) bool                { return false }
+func (d defVal) HGet(_ string) (string, bool)         { return "", false }
+func (d defVal) HGetAll() []string                    { return empty }
+func (d defVal) HKeys() []string                      { return empty }
+func (d defVal) HLen() int64                          { return 0 }
+func (d defVal) HMGet(fields ...string) []interface{} { return make([]interface{}, len(fields)) }
+func (d defVal) HMSet(_ ...string)                    {}
+func (d defVal) HSet(_, _ string) bool                { return false }
+func (d defVal) HSetNx(_, _ string) bool              { return false }
+func (d defVal) HVals() []string                      { return empty }

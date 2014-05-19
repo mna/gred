@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"strconv"
 	"strings"
 
 	"github.com/PuerkitoBio/gred/cmd"
@@ -18,9 +17,6 @@ var (
 	pong  = []byte("+PONG\r\n")
 	ok    = []byte("+OK\r\n")
 	defdb = srv.NewDB(0)
-
-	errArgNotInteger = errors.New("ERR value is not an integer or out of range")
-	errArgNotFloat   = errors.New("ERR value is not a valid float")
 )
 
 type Conn interface {
@@ -72,7 +68,7 @@ func (c *conn) Handle() error {
 		var res interface{}
 		var rerr error
 		if cd, ok := cmd.Commands[strings.ToLower(ar[0])]; ok {
-			args, ints, floats, err := c.parseArgs(cd, ar[0], ar[1:])
+			args, ints, floats, err := cd.GetArgDef().ParseArgs(ar[0], ar[1:])
 			if err != nil {
 				rerr = err
 			} else {
@@ -89,43 +85,6 @@ func (c *conn) Handle() error {
 			return err
 		}
 	}
-}
-
-func (c *conn) parseArgs(cd cmd.Cmd, name string, args []string) ([]string, []int64, []float64, error) {
-	l := len(args)
-	ad := cd.GetArgDef()
-	if l < ad.MinArgs || (l > ad.MaxArgs && ad.MaxArgs >= 0) {
-		return nil, nil, nil, fmt.Errorf("ERR wrong number of arguments for '%s' command", name)
-	}
-
-	// Parse integers
-	intix := ad.IntIndices
-	ints := make([]int64, len(intix))
-	for i, ix := range intix {
-		if ix < 0 {
-			ix = l + ix
-		}
-		val, err := strconv.ParseInt(args[ix], 10, 64)
-		if err != nil {
-			return nil, nil, nil, errArgNotInteger
-		}
-		ints[i] = val
-	}
-
-	// Parse floats
-	fix := ad.FloatIndices
-	floats := make([]float64, len(fix))
-	for i, ix := range fix {
-		if ix < 0 {
-			ix = l + ix
-		}
-		val, err := strconv.ParseFloat(args[ix], 64)
-		if err != nil {
-			return nil, nil, nil, errArgNotFloat
-		}
-		floats[i] = val
-	}
-	return args, ints, floats, nil
 }
 
 // writeResponse writes the response to the network connection.

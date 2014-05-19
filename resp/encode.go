@@ -52,6 +52,10 @@ func encodeValue(w io.Writer, v interface{}) error {
 		return encodeBulkString(w, BulkString(v))
 	case BulkString:
 		return encodeBulkString(w, v)
+	case []string:
+		return encodeStringArray(w, v)
+	case []interface{}:
+		return encodeArray(w, Array(v))
 	case Array:
 		return encodeArray(w, v)
 	case nil:
@@ -59,6 +63,32 @@ func encodeValue(w io.Writer, v interface{}) error {
 	default:
 		return ErrInvalidValue
 	}
+}
+
+// encodeStringArray is a specialized array encoding func to avoid having to
+// allocate an empty slice interface and copy values to it to use encodeArray.
+func encodeStringArray(w io.Writer, v []string) error {
+	// Special case for a nil array
+	if v == nil {
+		err := encodePrefixed(w, '*', "-1")
+		return err
+	}
+
+	// First encode the number of elements
+	n := len(v)
+	err := encodePrefixed(w, '*', strconv.Itoa(n))
+	if err != nil {
+		return err
+	}
+
+	// Then encode each value
+	for _, el := range v {
+		err = encodeBulkString(w, BulkString(el))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // encodeArray encodes an array value to w.

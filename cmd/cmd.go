@@ -3,11 +3,18 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/PuerkitoBio/gred/srv"
 )
 
+const (
+	WrongNumberOfArgsFmt = "ERR wrong number of arguments for '%s' command"
+)
+
 var (
+	ErrArgNotInteger  = errors.New("ERR value is not an integer or out of range")
+	ErrArgNotFloat    = errors.New("ERR value is not a valid float")
 	ErrInvalidValType = errors.New("ERR Operation against a key holding the wrong kind of value")
 	ErrNilSuccess     = errors.New("nil")
 	ErrPong           = errors.New("pong")
@@ -34,13 +41,59 @@ type DBCmd interface {
 	ExecWithDB(srv.DB, []string, []int64, []float64) (interface{}, error)
 }
 
+type ArgFn func([]string, []int64, []float64) error
+
 type ArgDef struct {
 	FloatIndices     []int
 	IntIndices       []int
 	MinArgs, MaxArgs int
+	ValidateFn       ArgFn
 }
 
 func (a *ArgDef) GetArgDef() *ArgDef { return a }
+
+func (a *ArgDef) ParseArgs(name string, args []string) ([]string, []int64, []float64, error) {
+	l := len(args)
+	if l < a.MinArgs || (l > a.MaxArgs && a.MaxArgs >= 0) {
+		return nil, nil, nil, fmt.Errorf(WrongNumberOfArgsFmt, name)
+	}
+
+	// Parse integers
+	intix := a.IntIndices
+	ints := make([]int64, len(intix))
+	for i, ix := range intix {
+		if ix < 0 {
+			ix = l + ix
+		}
+		val, err := strconv.ParseInt(args[ix], 10, 64)
+		if err != nil {
+			return nil, nil, nil, ErrArgNotInteger
+		}
+		ints[i] = val
+	}
+
+	// Parse floats
+	fix := a.FloatIndices
+	floats := make([]float64, len(fix))
+	for i, ix := range fix {
+		if ix < 0 {
+			ix = l + ix
+		}
+		val, err := strconv.ParseFloat(args[ix], 64)
+		if err != nil {
+			return nil, nil, nil, ErrArgNotFloat
+		}
+		floats[i] = val
+	}
+
+	if a.ValidateFn != nil {
+		err := a.ValidateFn(args, ints, floats)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	}
+	return args, ints, floats, nil
+}
 
 var _ DBCmd = (*singleKeyCmd)(nil)
 
