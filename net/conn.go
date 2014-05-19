@@ -14,8 +14,10 @@ import (
 )
 
 var (
-	pong  = []byte("+PONG\r\n")
-	ok    = []byte("+OK\r\n")
+	// TODO : Ideally these protocol optimizations should be in resp package
+	pong = []byte("+PONG\r\n")
+	ok   = []byte("+OK\r\n")
+
 	defdb = srv.NewDB(0)
 )
 
