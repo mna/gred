@@ -14,10 +14,6 @@ import (
 )
 
 var (
-	// TODO : Ideally these protocol optimizations should be in resp package
-	pong = []byte("+PONG\r\n")
-	ok   = []byte("+OK\r\n")
-
 	defdb = srv.NewDB(0)
 )
 
@@ -48,7 +44,6 @@ func (c *conn) Handle() error {
 	defer c.Close()
 
 	br := bufio.NewReader(c)
-
 	for {
 		// Get the request
 		ar, err := resp.DecodeRequest(br)
@@ -77,6 +72,10 @@ func (c *conn) Handle() error {
 				switch cd := cd.(type) {
 				case cmd.DBCmd:
 					res, rerr = cd.ExecWithDB(c.db, args, ints, floats)
+				case cmd.SrvCmd:
+					res, rerr = cd.Exec(args, ints, floats)
+				default:
+					panic(fmt.Sprintf("unsupported command type: %T", cd))
 				}
 			}
 		} else {
@@ -86,32 +85,16 @@ func (c *conn) Handle() error {
 		if err != nil {
 			return err
 		}
+		if rerr == cmd.ErrQuit {
+			return nil
+		}
 	}
 }
 
 // writeResponse writes the response to the network connection.
 func (c *conn) writeResponse(res interface{}, err error) error {
-	switch err {
-	case cmd.ErrNilSuccess:
-		// Special-case for success but nil return value
-		return resp.Encode(c, nil)
-
-	case cmd.ErrPong:
-		// Special-case for pong response
-		_, err = c.Write(pong)
-		return err
-
-	case nil:
-		if res == nil {
-			// If the result is nil, send the OK response
-			_, err = c.Write(ok)
-			return err
-		}
-		// Otherwise encode the response
-		return resp.Encode(c, res)
-
-	default:
-		// Return the non-nil error
+	if err != nil {
 		return resp.Encode(c, resp.Error(err.Error()))
 	}
+	return resp.Encode(c, res)
 }

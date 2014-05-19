@@ -111,7 +111,7 @@ func setFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{
 	if v, ok := v.(vals.String); ok {
 		k.Abort()
 		v.Set(args[1])
-		return nil, nil
+		return cmd.OKVal, nil
 	}
 	return nil, cmd.ErrInvalidValType
 }

@@ -78,7 +78,7 @@ func hgetFn(k srv.Key, args []string, ints []int64, floats []float64) (interface
 		if ok {
 			return ret, nil
 		}
-		return nil, cmd.ErrNilSuccess
+		return nil, nil
 	}
 	return nil, cmd.ErrInvalidValType
 }
@@ -181,7 +181,7 @@ func hmsetFn(k srv.Key, args []string, ints []int64, floats []float64) (interfac
 	v := k.Val()
 	if v, ok := v.(vals.Hash); ok {
 		v.HMSet(args[1:]...)
-		return nil, nil
+		return cmd.OKVal, nil
 	}
 	return nil, cmd.ErrInvalidValType
 }

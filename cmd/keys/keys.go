@@ -139,7 +139,7 @@ var psetex = cmd.NewDBCmd(
 func psetexFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
 	// db locking is done inside db.PSetEx
 	db.PSetEx(args[0], ints[0], args[2], func() { delExpFn(db, args[0]) })
-	return nil, nil
+	return cmd.OKVal, nil
 }
 
 var pttl = cmd.NewDBCmd(
@@ -167,7 +167,7 @@ var setex = cmd.NewDBCmd(
 func setexFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
 	// db locking is done inside db.SetEx
 	db.SetEx(args[0], ints[0], args[2], func() { delExpFn(db, args[0]) })
-	return nil, nil
+	return cmd.OKVal, nil
 }
 
 var ttl = cmd.NewDBCmd(

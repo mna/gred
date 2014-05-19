@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/PuerkitoBio/gred/resp"
 	"github.com/PuerkitoBio/gred/srv"
 )
 
@@ -13,11 +14,14 @@ const (
 )
 
 var (
+	PongVal = resp.Pong{}
+	OKVal   = resp.OK{}
+
 	ErrArgNotInteger  = errors.New("ERR value is not an integer or out of range")
 	ErrArgNotFloat    = errors.New("ERR value is not a valid float")
 	ErrInvalidValType = errors.New("ERR Operation against a key holding the wrong kind of value")
-	ErrNilSuccess     = errors.New("nil")
-	ErrPong           = errors.New("pong")
+
+	ErrQuit = errors.New("quit")
 )
 
 var Commands = make(map[string]Cmd)
@@ -34,6 +38,29 @@ func Register(name string, c Cmd) {
 
 type Cmd interface {
 	GetArgDef() *ArgDef
+}
+
+type SrvFn func([]string, []int64, []float64) (interface{}, error)
+
+type SrvCmd interface {
+	Cmd
+	Exec([]string, []int64, []float64) (interface{}, error)
+}
+
+func NewSrvCmd(arg *ArgDef, fn SrvFn) SrvCmd {
+	return &srvCmd{
+		arg,
+		fn,
+	}
+}
+
+type srvCmd struct {
+	*ArgDef
+	fn SrvFn
+}
+
+func (s *srvCmd) Exec(args []string, ints []int64, floats []float64) (interface{}, error) {
+	return s.fn(args, ints, floats)
 }
 
 type DBCmd interface {

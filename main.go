@@ -7,6 +7,7 @@ import (
 	"net"
 
 	"github.com/PuerkitoBio/gred/cmd"
+	_ "github.com/PuerkitoBio/gred/cmd/connection"
 	_ "github.com/PuerkitoBio/gred/cmd/hashes"
 	_ "github.com/PuerkitoBio/gred/cmd/keys"
 	_ "github.com/PuerkitoBio/gred/cmd/strings"

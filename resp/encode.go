@@ -6,8 +6,15 @@ import (
 	"strconv"
 )
 
-// TODO : Make alloc optimizations here instead of in the app (+OK\r\n, pong,
-// bool 1 and 0, nil).
+var (
+	// Common encoding values optimized to avoid allocations.
+	pong   = []byte("+PONG\r\n")
+	ok     = []byte("+OK\r\n")
+	true_  = []byte(":1\r\n")
+	false_ = []byte(":0\r\n")
+	one    = true_
+	zero   = false_
+)
 
 // ErrInvalidValue is returned if the value to encode is invalid.
 var ErrInvalidValue = errors.New("resp: invalid value")
@@ -16,6 +23,14 @@ var ErrInvalidValue = errors.New("resp: invalid value")
 // contain \r or \n characters. It must be used as a type conversion
 // so that Encode serializes the string as an Error.
 type Error string
+
+// Pong is a sentinel type used to indicate that the PONG simple string
+// value should be encoded.
+type Pong struct{}
+
+// OK is a sentinel type used to indicate that the OK simple string
+// value should be encoded.
+type OK struct{}
 
 // SimpleString represents a simple string as defined by the RESP. It
 // cannot contain \r or \n characters. It must be used as a type conversion
@@ -35,19 +50,34 @@ func Encode(w io.Writer, v interface{}) error {
 // encodeValue encodes the value v and writes the serialized data to w.
 func encodeValue(w io.Writer, v interface{}) error {
 	switch v := v.(type) {
+	case OK:
+		_, err := w.Write(ok)
+		return err
+	case Pong:
+		_, err := w.Write(pong)
+		return err
+	case bool:
+		if v {
+			_, err := w.Write(true_)
+			return err
+		}
+		_, err := w.Write(false_)
+		return err
 	case SimpleString:
 		return encodeSimpleString(w, v)
 	case Error:
 		return encodeError(w, v)
-	case bool:
-		if v {
-			return encodeInteger(w, 1)
-		}
-		return encodeInteger(w, 0)
-	case int:
-		return encodeInteger(w, int64(v))
 	case int64:
-		return encodeInteger(w, v)
+		switch v {
+		case 0:
+			_, err := w.Write(zero)
+			return err
+		case 1:
+			_, err := w.Write(one)
+			return err
+		default:
+			return encodeInteger(w, v)
+		}
 	case string:
 		return encodeBulkString(w, BulkString(v))
 	case BulkString:
