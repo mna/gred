@@ -31,8 +31,11 @@ type DB interface {
 	Persist(string) bool
 	PExpire(string, int64, func()) bool
 	PExpireAt(string, int64, func()) bool
+	PSetEx(string, int64, string, func())
 	PTTL(string) int64
+	SetEx(string, int64, string, func())
 	TTL(string) int64
+	Type(string) string
 
 	Key(string) Key
 	LockGetKey(string, NoKeyFlag) (Key, func())
@@ -98,6 +101,29 @@ func (d *db) expireDuration(name string, dur time.Duration, fn func()) bool {
 	return false
 }
 
+func (d *db) PSetEx(name string, ms int64, v string, fn func()) {
+	d.setExDuration(name, time.Duration(ms)*time.Millisecond, v, fn)
+}
+
+func (d *db) SetEx(name string, secs int64, v string, fn func()) {
+	d.setExDuration(name, time.Duration(secs)*time.Second, v, fn)
+}
+
+func (d *db) setExDuration(name string, dur time.Duration, v string, fn func()) {
+	// Get or create the key
+	k, def := d.LockGetKey(name, NoKeyCreateString)
+	defer def()
+
+	// Set its value
+	k.Lock()
+	defer k.Unlock()
+	kv := k.Val().(vals.String)
+	kv.Set(v)
+
+	// Expire the key
+	k.Expire(dur, fn)
+}
+
 func (d *db) Persist(name string) bool {
 	if k, ok := d.keys[name]; ok {
 		k.Lock()
@@ -131,6 +157,15 @@ func (d *db) TTL(name string) int64 {
 		return int64(ttl / time.Second)
 	}
 	return -2
+}
+
+func (d *db) Type(name string) string {
+	if k, ok := d.keys[name]; ok {
+		k.RLock()
+		defer k.RUnlock()
+		return k.Val().Type()
+	}
+	return "none"
 }
 
 func (d *db) Key(name string) Key {

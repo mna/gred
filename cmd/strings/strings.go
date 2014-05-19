@@ -94,6 +94,7 @@ func getsetFn(k srv.Key, args []string, ints []int64, floats []float64) (interfa
 	return nil, cmd.ErrInvalidValType
 }
 
+// TODO : This doesn't handle the extra optional args (EX, NX, PX)
 var set = cmd.NewSingleKeyCmd(
 	&cmd.ArgDef{
 		MinArgs: 2,
