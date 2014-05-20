@@ -11,9 +11,9 @@ type List interface {
 	LLen() int64
 	LPop() (string, bool)
 	LPush(...string) int64
+	LRange(int64, int64) []string
+	LRem(int64, string) int64
 	/*
-		LRange(int64, int64) []string
-		LRem(int64, string) int64
 		LSet(int64, string) bool
 		RPop() (string, bool)
 		RPush(...string) int64
@@ -33,7 +33,7 @@ func (l list) Type() string {
 func (l *list) LIndex(ix int64) (string, bool) {
 	ln := int64(len(*l))
 	if ix < 0 {
-		ix = ln + ix
+		ix += ln
 	}
 	if ix >= 0 && ix < ln {
 		return (*l)[ix], true
@@ -89,4 +89,61 @@ func (l *list) LPush(vals ...string) int64 {
 	sort.Sort(sort.Reverse(sort.StringSlice(vals)))
 	*l = append(vals, *l...)
 	return int64(len(*l))
+}
+
+func (l *list) LRange(start, stop int64) []string {
+	ln := int64(len(*l))
+	if start < 0 {
+		start += ln
+	}
+	if stop < 0 {
+		stop += ln
+	}
+	if start < 0 {
+		start = 0
+	}
+	if stop >= ln {
+		stop = ln - 1
+	}
+	if stop-start < 0 {
+		return empty
+	}
+	return (*l)[start : stop+1]
+}
+
+func (l *list) LRem(cnt int64, val string) int64 {
+	var n int64
+	ln := len(*l)
+	if cnt >= 0 {
+		for i := 0; i < ln; i++ {
+			if (*l)[i] == val {
+				l.del(i)
+				i--
+				ln--
+				n++
+				if cnt > 0 && n >= cnt {
+					break
+				}
+			}
+		}
+	} else {
+		cnt *= -1
+		for i := ln - 1; i >= 0; i-- {
+			if (*l)[i] == val {
+				l.del(i)
+				i--
+				n++
+				if n >= cnt {
+					break
+				}
+			}
+		}
+	}
+	return n
+}
+
+func (l *list) del(ix int) {
+	copy((*l)[ix:], (*l)[ix+1:])
+	(*l)[len(*l)-1] = ""
+	*l = (*l)[:len(*l)-1]
 }
