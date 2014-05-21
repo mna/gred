@@ -14,6 +14,7 @@ var (
 	_ Key         = (*defKey)(nil)
 	_ vals.String = (*defVal)(nil)
 	_ vals.Hash   = (*defVal)(nil)
+	_ vals.List   = (*defVal)(nil)
 )
 
 type defKey string
@@ -53,3 +54,17 @@ func (d defVal) HMSet(_ ...string)                    {}
 func (d defVal) HSet(_, _ string) bool                { return false }
 func (d defVal) HSetNx(_, _ string) bool              { return false }
 func (d defVal) HVals() []string                      { return empty }
+
+// Lists implementation
+func (d defVal) LIndex(_ int64) (string, bool)   { return "", false }
+func (d defVal) LInsertBefore(_, _ string) int64 { return 0 }
+func (d defVal) LInsertAfter(_, _ string) int64  { return 0 }
+func (d defVal) LLen() int64                     { return 0 }
+func (d defVal) LPop() (string, bool)            { return "", false }
+func (d defVal) LPush(_ ...string) int64         { return 0 }
+func (d defVal) LRange(_, _ int64) []string      { return empty }
+func (d defVal) LRem(_ int64, _ string) int64    { return 0 }
+func (d defVal) LSet(_ int64, _ string) bool     { return false }
+func (d defVal) LTrim(_, _ int64)                {}
+func (d defVal) RPop() (string, bool)            { return "", false }
+func (d defVal) RPush(_ ...string) int64         { return 0 }

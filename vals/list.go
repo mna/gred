@@ -25,6 +25,11 @@ var _ List = (*list)(nil)
 
 type list []string
 
+func NewList() List {
+	l := make(list, 0, initListCap)
+	return &l
+}
+
 func (l list) Type() string {
 	return "list"
 }

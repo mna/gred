@@ -10,6 +10,7 @@ import (
 	_ "github.com/PuerkitoBio/gred/cmd/connection"
 	_ "github.com/PuerkitoBio/gred/cmd/hashes"
 	_ "github.com/PuerkitoBio/gred/cmd/keys"
+	_ "github.com/PuerkitoBio/gred/cmd/lists"
 	_ "github.com/PuerkitoBio/gred/cmd/strings"
 	gnet "github.com/PuerkitoBio/gred/net"
 	"github.com/golang/glog"
