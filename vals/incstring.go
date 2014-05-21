@@ -18,6 +18,12 @@ type incString struct {
 	// TODO : May hold the parsed integer value eventually
 }
 
+func NewIncString(initval string) IncString {
+	return &incString{
+		NewString(initval),
+	}
+}
+
 func (is *incString) Decr() (int64, bool) {
 	return is.IncrBy(-1)
 }

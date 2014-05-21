@@ -17,8 +17,8 @@ var (
 	PongVal = resp.Pong{}
 	OKVal   = resp.OK{}
 
-	ErrArgNotInteger  = errors.New("ERR value is not an integer or out of range")
-	ErrArgNotFloat    = errors.New("ERR value is not a valid float")
+	ErrNotInteger     = errors.New("ERR value is not an integer or out of range")
+	ErrNotFloat       = errors.New("ERR value is not a valid float")
 	ErrInvalidValType = errors.New("ERR Operation against a key holding the wrong kind of value")
 	ErrSyntax         = errors.New("ERR syntax error")
 
@@ -95,7 +95,7 @@ func (a *ArgDef) ParseArgs(name string, args []string) ([]string, []int64, []flo
 		}
 		val, err := strconv.ParseInt(args[ix], 10, 64)
 		if err != nil {
-			return nil, nil, nil, ErrArgNotInteger
+			return nil, nil, nil, ErrNotInteger
 		}
 		ints[i] = val
 	}
@@ -109,7 +109,7 @@ func (a *ArgDef) ParseArgs(name string, args []string) ([]string, []int64, []flo
 		}
 		val, err := strconv.ParseFloat(args[ix], 64)
 		if err != nil {
-			return nil, nil, nil, ErrArgNotFloat
+			return nil, nil, nil, ErrNotFloat
 		}
 		floats[i] = val
 	}

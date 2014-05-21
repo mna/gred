@@ -15,6 +15,7 @@ const (
 	NoKeyNone NoKeyFlag = iota
 	NoKeyDefaultVal
 	NoKeyCreateString
+	NoKeyCreateStringInt
 	NoKeyCreateHash
 	NoKeyCreateList
 	NoKeyCreateSet
@@ -196,7 +197,9 @@ func (d *db) LockGetKey(name string, flag NoKeyFlag) (Key, func()) {
 	var k Key
 	switch flag {
 	case NoKeyCreateString:
-		k = newKey(name, vals.NewString())
+		k = newKey(name, vals.NewIncString(""))
+	case NoKeyCreateStringInt:
+		k = newKey(name, vals.NewIncString("0"))
 	case NoKeyCreateHash:
 		k = newKey(name, vals.NewHash())
 	case NoKeyCreateList:

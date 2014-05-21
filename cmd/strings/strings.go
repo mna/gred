@@ -8,9 +8,14 @@ import (
 
 func init() {
 	cmd.Register("append", append_)
+	cmd.Register("decr", decr)
+	cmd.Register("decrby", decrby)
 	cmd.Register("get", get)
 	cmd.Register("getrange", getrange)
-	cmd.Register("substr", getrange) // alias
+	cmd.Register("incr", incr)
+	cmd.Register("incrby", incrby)
+	cmd.Register("incrbyfloat", incrbyfloat)
+	//cmd.Register("substr", getrange) // alias
 	cmd.Register("getset", getset)
 	cmd.Register("set", set)
 	cmd.Register("strlen", strlen)
@@ -31,6 +36,53 @@ func appendFn(k srv.Key, args []string, ints []int64, floats []float64) (interfa
 	v := k.Val()
 	if v, ok := v.(vals.String); ok {
 		return v.Append(args[1]), nil
+	}
+	return nil, cmd.ErrInvalidValType
+}
+
+var decr = cmd.NewSingleKeyCmd(
+	&cmd.ArgDef{
+		MinArgs: 1,
+		MaxArgs: 1,
+	},
+	srv.NoKeyCreateStringInt,
+	decrFn)
+
+func decrFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
+	k.Lock()
+	defer k.Unlock()
+
+	v := k.Val()
+	if v, ok := v.(vals.IncString); ok {
+		val, ok := v.Decr()
+		if ok {
+			return val, nil
+		}
+		return nil, cmd.ErrNotInteger
+	}
+	return nil, cmd.ErrInvalidValType
+}
+
+var decrby = cmd.NewSingleKeyCmd(
+	&cmd.ArgDef{
+		MinArgs:    2,
+		MaxArgs:    2,
+		IntIndices: []int{1},
+	},
+	srv.NoKeyCreateStringInt,
+	decrbyFn)
+
+func decrbyFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
+	k.Lock()
+	defer k.Unlock()
+
+	v := k.Val()
+	if v, ok := v.(vals.IncString); ok {
+		val, ok := v.DecrBy(ints[0])
+		if ok {
+			return val, nil
+		}
+		return nil, cmd.ErrNotInteger
 	}
 	return nil, cmd.ErrInvalidValType
 }
@@ -90,6 +142,77 @@ func getsetFn(k srv.Key, args []string, ints []int64, floats []float64) (interfa
 	if v, ok := v.(vals.String); ok {
 		k.Abort()
 		return v.GetSet(args[1]), nil
+	}
+	return nil, cmd.ErrInvalidValType
+}
+
+var incr = cmd.NewSingleKeyCmd(
+	&cmd.ArgDef{
+		MinArgs: 1,
+		MaxArgs: 1,
+	},
+	srv.NoKeyCreateStringInt,
+	incrFn)
+
+func incrFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
+	k.Lock()
+	defer k.Unlock()
+
+	v := k.Val()
+	if v, ok := v.(vals.IncString); ok {
+		val, ok := v.Incr()
+		if ok {
+			return val, nil
+		}
+		return nil, cmd.ErrNotInteger
+	}
+	return nil, cmd.ErrInvalidValType
+}
+
+var incrby = cmd.NewSingleKeyCmd(
+	&cmd.ArgDef{
+		MinArgs:    2,
+		MaxArgs:    2,
+		IntIndices: []int{1},
+	},
+	srv.NoKeyCreateStringInt,
+	incrbyFn)
+
+func incrbyFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
+	k.Lock()
+	defer k.Unlock()
+
+	v := k.Val()
+	if v, ok := v.(vals.IncString); ok {
+		val, ok := v.IncrBy(ints[0])
+		if ok {
+			return val, nil
+		}
+		return nil, cmd.ErrNotInteger
+	}
+	return nil, cmd.ErrInvalidValType
+}
+
+var incrbyfloat = cmd.NewSingleKeyCmd(
+	&cmd.ArgDef{
+		MinArgs:      2,
+		MaxArgs:      2,
+		FloatIndices: []int{1},
+	},
+	srv.NoKeyCreateStringInt,
+	incrbyfloatFn)
+
+func incrbyfloatFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
+	k.Lock()
+	defer k.Unlock()
+
+	v := k.Val()
+	if v, ok := v.(vals.IncString); ok {
+		val, ok := v.IncrByFloat(floats[0])
+		if ok {
+			return val, nil
+		}
+		return nil, cmd.ErrNotFloat
 	}
 	return nil, cmd.ErrInvalidValType
 }

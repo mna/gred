@@ -13,8 +13,9 @@ type String interface {
 
 type stringval string
 
-func NewString() String {
-	return new(stringval)
+func NewString(initval string) String {
+	s := stringval(initval)
+	return &s
 }
 
 func (s *stringval) Type() string {
