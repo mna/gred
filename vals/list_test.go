@@ -121,3 +121,69 @@ func TestLRem(t *testing.T) {
 		t.Logf("%d: %v", i, l)
 	}
 }
+
+func TestLSet(t *testing.T) {
+	cases := []struct {
+		l   []string
+		val string
+		ix  int64
+		exp []string
+		res bool
+	}{
+		0:  {nil, "", 0, nil, false},
+		1:  {[]string{}, "", 0, []string{}, false},
+		2:  {[]string{"a"}, "b", 0, []string{"b"}, true},
+		3:  {[]string{"a", "b", "c"}, "z", 0, []string{"z", "b", "c"}, true},
+		4:  {[]string{"a", "b", "c"}, "z", 1, []string{"a", "z", "c"}, true},
+		5:  {[]string{"a", "b", "c"}, "z", 2, []string{"a", "b", "z"}, true},
+		6:  {[]string{"a", "b", "c"}, "z", 3, []string{"a", "b", "c"}, false},
+		7:  {[]string{"a", "b", "c"}, "z", -1, []string{"a", "b", "z"}, true},
+		8:  {[]string{"a", "b", "c"}, "z", -2, []string{"a", "z", "c"}, true},
+		9:  {[]string{"a", "b", "c"}, "z", -3, []string{"z", "b", "c"}, true},
+		10: {[]string{"a", "b", "c"}, "z", -4, []string{"a", "b", "c"}, false},
+	}
+	for i, c := range cases {
+		l := list(c.l)
+		got := l.LSet(c.ix, c.val)
+		if got != c.res {
+			t.Errorf("%d: expected %v, got %v", i, c.res, got)
+		}
+		if !reflect.DeepEqual([]string(l), c.exp) {
+			t.Errorf("%d: expected %v, got %v", i, c.exp, l)
+		}
+		t.Logf("%d: %v", i, l)
+	}
+}
+
+func TestLTrim(t *testing.T) {
+	cases := []struct {
+		l           []string
+		start, stop int64
+		exp         []string
+	}{
+		0:  {nil, 0, 0, nil},
+		1:  {[]string{}, 0, 0, []string{}},
+		2:  {[]string{"a"}, 0, 0, []string{"a"}},
+		3:  {[]string{"a", "b", "c"}, 0, 0, []string{"a"}},
+		4:  {[]string{"a", "b", "c"}, 0, 1, []string{"a", "b"}},
+		5:  {[]string{"a", "b", "c"}, 0, 2, []string{"a", "b", "c"}},
+		6:  {[]string{"a", "b", "c"}, 0, 3, []string{"a", "b", "c"}},
+		7:  {[]string{"a", "b", "c"}, 2, 3, []string{"c"}},
+		8:  {[]string{"a", "b", "c"}, -2, 1, []string{"b"}},
+		9:  {[]string{"a", "b", "c"}, -2, 0, []string{}},
+		10: {[]string{"a", "b", "c"}, -1, -3, []string{}},
+		11: {[]string{"a", "b", "c"}, -5, -3, []string{"a"}},
+		12: {[]string{"a", "b", "c"}, -15, -13, []string{}},
+	}
+	for i, c := range cases {
+		l := list(c.l)
+		got := l.LTrim(c.start, c.stop)
+		if got != int64(len(c.exp)) {
+			t.Errorf("%d: expected %d, got %d", i, len(c.exp), got)
+		}
+		if !reflect.DeepEqual([]string(l), c.exp) {
+			t.Errorf("%d: expected %v, got %v", i, c.exp, l)
+		}
+		t.Logf("%d: %v", i, l)
+	}
+}

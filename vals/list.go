@@ -13,11 +13,10 @@ type List interface {
 	LPush(...string) int64
 	LRange(int64, int64) []string
 	LRem(int64, string) int64
-	/*
-		LSet(int64, string) bool
-		RPop() (string, bool)
-		RPush(...string) int64
-	*/
+	LSet(int64, string) bool
+	LTrim(int64, int64) int64
+	RPop() (string, bool)
+	RPush(...string) int64
 }
 
 const initListCap int = 10
@@ -80,6 +79,7 @@ func (l *list) LPop() (string, bool) {
 		return "", false
 	}
 	val := (*l)[0]
+	(*l)[0] = ""
 	*l = (*l)[1:]
 	return val, true
 }
@@ -92,19 +92,7 @@ func (l *list) LPush(vals ...string) int64 {
 }
 
 func (l *list) LRange(start, stop int64) []string {
-	ln := int64(len(*l))
-	if start < 0 {
-		start += ln
-	}
-	if stop < 0 {
-		stop += ln
-	}
-	if start < 0 {
-		start = 0
-	}
-	if stop >= ln {
-		stop = ln - 1
-	}
+	start, stop = l.normalizeStartStop(start, stop)
 	if stop-start < 0 {
 		return empty
 	}
@@ -146,4 +134,60 @@ func (l *list) del(ix int) {
 	copy((*l)[ix:], (*l)[ix+1:])
 	(*l)[len(*l)-1] = ""
 	*l = (*l)[:len(*l)-1]
+}
+
+func (l *list) LSet(ix int64, val string) bool {
+	ln := int64(len(*l))
+	if ix < 0 {
+		ix += ln
+	}
+	if ix >= 0 && ix < ln {
+		(*l)[ix] = val
+		return true
+	}
+	return false
+}
+
+// LTrim returns the number of elements remaining in the list, so that
+// the containing key can know if it should be deleted.
+func (l *list) LTrim(start, stop int64) int64 {
+	start, stop = l.normalizeStartStop(start, stop)
+	if stop-start < 0 {
+		*l = (*l)[:0]
+		return 0
+	}
+	*l = (*l)[start : stop+1]
+	return int64(len(*l))
+}
+
+func (l *list) RPop() (string, bool) {
+	if len(*l) == 0 {
+		return "", false
+	}
+	val := (*l)[len(*l)-1]
+	(*l)[len(*l)-1] = ""
+	*l = (*l)[:len(*l)-1]
+	return val, true
+}
+
+func (l *list) RPush(vals ...string) int64 {
+	*l = append(*l, vals...)
+	return int64(len(*l))
+}
+
+func (l *list) normalizeStartStop(start, stop int64) (int64, int64) {
+	ln := int64(len(*l))
+	if start < 0 {
+		start += ln
+	}
+	if stop < 0 {
+		stop += ln
+	}
+	if start < 0 {
+		start = 0
+	}
+	if stop >= ln {
+		stop = ln - 1
+	}
+	return start, stop
 }
