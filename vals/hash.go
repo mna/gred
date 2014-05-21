@@ -1,7 +1,5 @@
 package vals
 
-var empty = []string{}
-
 type Hash interface {
 	Value
 

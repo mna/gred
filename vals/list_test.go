@@ -177,10 +177,7 @@ func TestLTrim(t *testing.T) {
 	}
 	for i, c := range cases {
 		l := list(c.l)
-		got := l.LTrim(c.start, c.stop)
-		if got != int64(len(c.exp)) {
-			t.Errorf("%d: expected %d, got %d", i, len(c.exp), got)
-		}
+		l.LTrim(c.start, c.stop)
 		if !reflect.DeepEqual([]string(l), c.exp) {
 			t.Errorf("%d: expected %v, got %v", i, c.exp, l)
 		}

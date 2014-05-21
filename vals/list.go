@@ -14,7 +14,7 @@ type List interface {
 	LRange(int64, int64) []string
 	LRem(int64, string) int64
 	LSet(int64, string) bool
-	LTrim(int64, int64) int64
+	LTrim(int64, int64)
 	RPop() (string, bool)
 	RPush(...string) int64
 }
@@ -150,14 +150,13 @@ func (l *list) LSet(ix int64, val string) bool {
 
 // LTrim returns the number of elements remaining in the list, so that
 // the containing key can know if it should be deleted.
-func (l *list) LTrim(start, stop int64) int64 {
+func (l *list) LTrim(start, stop int64) {
 	start, stop = l.normalizeStartStop(start, stop)
 	if stop-start < 0 {
 		*l = (*l)[:0]
-		return 0
+		return
 	}
 	*l = (*l)[start : stop+1]
-	return int64(len(*l))
 }
 
 func (l *list) RPop() (string, bool) {
