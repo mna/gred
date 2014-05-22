@@ -40,3 +40,41 @@ The commands are listed by category, as it is on the [redis website][redis].
 | BITCOUNT         | ø      |                                        |
 | BITOP            | ø      |                                        |
 | BITPOS           | ø      |                                        |
+| DECR             | √      | Converted to int on each execution.    |
+| DECRBY           | √      | Converted to int on each execution.    |
+| GET              | √      |                                        |
+| GETBIT           | ø      |                                        |
+| GETRANGE         | √      |                                        |
+| GETSET           | √      |                                        |
+| INCR             | √      | Converted to int on each execution.    |
+| INCRBY           | √      | Converted to int on each execution.    |
+| INCRBYFLOAT      | √      | Converted to float on each execution (like Redis?). |
+| MGET             | ø      |                                        |
+| MSET             | ø      |                                        |
+| MSETNX           | ø      |                                        |
+| PSETEX           | ø      |                                        |
+| SET              | ≈      | Optional args not implemented (EX, PX, NX, XX). |
+| SETBIT           | ø      |                                        |
+| SETEX            | ø      |                                        |
+| SETNX            | ø      |                                        |
+| SETRANGE         | ø      |                                        |
+| STRLEN           | √      |                                        |
+
+### Hashes
+
+| Command          | Status | Comment                                |
+| ---------------- | :----: | -------------------------------------- |
+| HDEL             | ≈      | Does not remove the key once empty.    |
+| HEXISTS          | √      |                                        |
+| HGET             | √      |                                        |
+| HGETALL          | √      |                                        |
+| HINCRBY          | ø      |                                        |
+| HINCRBYFLOAT     | ø      |                                        |
+| HKEYS            | √      |                                        |
+| HLEN             | √      |                                        |
+| HMGET            | √      |                                        |
+| HMSET            | √      |                                        |
+| HSCAN            | ø      |                                        |
+| HSET             | √      |                                        |
+| HSETNX           | √      |                                        |
+| HVALS            | √      |                                        |

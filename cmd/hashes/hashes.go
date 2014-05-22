@@ -30,6 +30,7 @@ var hdel = cmd.NewSingleKeyCmd(
 	srv.NoKeyDefaultVal,
 	hdelFn)
 
+// TODO : Remove key if empty after del
 func hdelFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
 	k.Lock()
 	defer k.Unlock()
