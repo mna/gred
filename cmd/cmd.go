@@ -21,6 +21,8 @@ var (
 	ErrNotFloat       = errors.New("ERR value is not a valid float")
 	ErrInvalidValType = errors.New("ERR Operation against a key holding the wrong kind of value")
 	ErrSyntax         = errors.New("ERR syntax error")
+	ErrNoSuchKey      = errors.New("ERR no such key")
+	ErrOutOfRange     = errors.New("ERR index out of range")
 
 	ErrQuit = errors.New("quit")
 )

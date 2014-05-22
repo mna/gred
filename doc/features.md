@@ -78,3 +78,27 @@ The commands are listed by category, as it is on the [redis website][redis].
 | HSET             | √      |                                        |
 | HSETNX           | √      |                                        |
 | HVALS            | √      |                                        |
+
+### Lists
+
+| Command          | Status | Comment                                |
+| ---------------- | :----: | -------------------------------------- |
+| BLPOP            | ø      | |
+| BRPOP            | ø      | |
+| BRPOPLPUSH       | ø      | |
+| LINDEX           | √      | |
+| LINSERT          | √      | |
+| LLEN             | √      | |
+| LPOP             | ≈      | Does not remove key if list is empty.  |
+| LPUSH            | √      | |
+| LPUSHX           | √      | |
+| LRANGE           | √      | |
+| LREM             | ≈      | Does not remove key if list is empty.  |
+| LSET             | √      | |
+| LTRIM            | √      | |
+| RPOP             | √      | |
+| RPOPLPUSH        | ø      | |
+| RPUSH            | ø      | |
+| RPUSHX           | ø      | |
+
+### Sets
