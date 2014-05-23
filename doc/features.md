@@ -90,15 +90,15 @@ The commands are listed by category, as it is on the [redis website][redis].
 | LINSERT          | √      | |
 | LLEN             | √      | |
 | LPOP             | ≈      | Does not remove key if list is empty.  |
-| LPUSH            | √      | |
+| LPUSH            | ≈      | Seems buggy (order of the elements).   |
 | LPUSHX           | √      | |
 | LRANGE           | √      | |
 | LREM             | ≈      | Does not remove key if list is empty.  |
 | LSET             | √      | |
 | LTRIM            | √      | |
 | RPOP             | √      | |
-| RPOPLPUSH        | ø      | |
-| RPUSH            | ø      | |
-| RPUSHX           | ø      | |
+| RPOPLPUSH        | √      | |
+| RPUSH            | √      | |
+| RPUSHX           | √      | |
 
 ### Sets

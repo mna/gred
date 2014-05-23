@@ -65,7 +65,7 @@ func (c *conn) Handle() error {
 		var res interface{}
 		var rerr error
 		if cd, ok := cmd.Commands[strings.ToLower(ar[0])]; ok {
-			args, ints, floats, err := cd.GetArgDef().ParseArgs(ar[0], ar[1:])
+			args, ints, floats, err := cd.Parse(ar[0], ar[1:])
 			if err != nil {
 				rerr = err
 			} else {

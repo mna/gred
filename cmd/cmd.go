@@ -10,16 +10,22 @@ import (
 )
 
 const (
+	// WrongNumberOfArgsFmt is a string that holds the normalized error message
+	// for when the number of arguments of a command is invalid.
 	WrongNumberOfArgsFmt = "ERR wrong number of arguments for '%s' command"
 )
 
 var (
+	// PongVal is a sentinel value used to return the PONG response for the PING command.
 	PongVal = resp.Pong{}
-	OKVal   = resp.OK{}
+
+	// OKVal is a sentinel value used to indicate that the standard OK simple string
+	// response should be returned.
+	OKVal = resp.OK{}
 
 	ErrNotInteger        = errors.New("ERR value is not an integer or out of range")
 	ErrNotFloat          = errors.New("ERR value is not a valid float")
-	ErrInvalidValType    = errors.New("ERR Operation against a key holding the wrong kind of value")
+	ErrInvalidValType    = errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
 	ErrSyntax            = errors.New("ERR syntax error")
 	ErrNoSuchKey         = errors.New("ERR no such key")
 	ErrOutOfRange        = errors.New("ERR index out of range")
@@ -29,8 +35,10 @@ var (
 	ErrQuit = errors.New("quit")
 )
 
+// Commands holds the list of registered commands.
 var Commands = make(map[string]Cmd)
 
+// Register registers a command name with an implementation.
 func Register(name string, c Cmd) {
 	if name == "" {
 		panic("cmds: call Register with empty command name")
@@ -41,8 +49,11 @@ func Register(name string, c Cmd) {
 	Commands[name] = c
 }
 
+// Cmd defines the common method required to implement a basic command.
+// It is insufficient to implement this sole interface. A command must also
+// implement one of the more specific {Srv,DB}Cmd interfaces.
 type Cmd interface {
-	GetArgDef() *ArgDef
+	Parse(string, []string) ([]string, []int64, []float64, error)
 }
 
 type SrvFn func([]string, []int64, []float64) (interface{}, error)
@@ -82,9 +93,7 @@ type ArgDef struct {
 	ValidateFn       ArgFn
 }
 
-func (a *ArgDef) GetArgDef() *ArgDef { return a }
-
-func (a *ArgDef) ParseArgs(name string, args []string) ([]string, []int64, []float64, error) {
+func (a *ArgDef) Parse(name string, args []string) ([]string, []int64, []float64, error) {
 	l := len(args)
 	if l < a.MinArgs || (l > a.MaxArgs && a.MaxArgs >= 0) {
 		return nil, nil, nil, fmt.Errorf(WrongNumberOfArgsFmt, name)

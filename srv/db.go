@@ -38,8 +38,7 @@ type DB interface {
 	TTL(string) int64
 	Type(string) string
 
-	Key(string) Key
-	SetKey(string, Key)
+	Keys() map[string]Key
 	LockGetKey(string, NoKeyFlag) (Key, func())
 }
 
@@ -170,8 +169,8 @@ func (d *db) Type(name string) string {
 	return "none"
 }
 
-func (d *db) Key(name string) Key {
-	return d.keys[name]
+func (d *db) Keys() map[string]Key {
+	return d.keys
 }
 
 func (d *db) SetKey(name string, k Key) {
@@ -202,13 +201,13 @@ func (d *db) LockGetKey(name string, flag NoKeyFlag) (Key, func()) {
 	var k Key
 	switch flag {
 	case NoKeyCreateString:
-		k = newKey(name, vals.NewIncString(""))
+		k = NewKey(name, vals.NewIncString(""))
 	case NoKeyCreateStringInt:
-		k = newKey(name, vals.NewIncString("0"))
+		k = NewKey(name, vals.NewIncString("0"))
 	case NoKeyCreateHash:
-		k = newKey(name, vals.NewIncHash())
+		k = NewKey(name, vals.NewIncHash())
 	case NoKeyCreateList:
-		k = newKey(name, vals.NewList())
+		k = NewKey(name, vals.NewList())
 	default:
 		panic(fmt.Sprintf("db.Key NoKeyFlag not implemented: %d", flag))
 	}

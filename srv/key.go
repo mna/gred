@@ -22,7 +22,7 @@ type key struct {
 	name string
 }
 
-func newKey(name string, v vals.Value) Key {
+func NewKey(name string, v vals.Value) Key {
 	return &key{
 		expirer: &expirer{},
 		v:       v,

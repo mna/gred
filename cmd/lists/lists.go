@@ -20,6 +20,9 @@ func init() {
 	cmd.Register("lset", lset)
 	cmd.Register("ltrim", ltrim)
 	cmd.Register("rpop", rpop)
+	cmd.Register("rpoplpush", rpoplpush)
+	cmd.Register("rpush", rpush)
+	cmd.Register("rpushx", rpushx)
 }
 
 var lindex = cmd.NewSingleKeyCmd(
@@ -283,19 +286,23 @@ var rpoplpush = cmd.NewDBCmd(
 
 func rpoplpushFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
 	db.RLock()
-	src := db.Key(args[0])
-	if src == nil {
+
+	// Get the source key
+	keys := db.Keys()
+	src, ok := keys[args[0]]
+	if !ok {
 		// Source key does not exist, return nil
 		db.RUnlock()
 		return nil, nil
 	}
 
-	// If source and destination is the same
+	// If source exists, and source and destination are the same
 	if args[0] == args[1] {
 		defer db.RUnlock()
 		src.Lock()
 		defer src.Unlock()
 
+		// Simply rotate the value (pop at tail, push at head)
 		v := src.Val()
 		if v, ok := v.(vals.List); ok {
 			val, ok := v.RPop()
@@ -309,13 +316,92 @@ func rpoplpushFn(db srv.DB, args []string, ints []int64, floats []float64) (inte
 	}
 
 	// Otherwise get the destination key, and create it if it doesn't exist
-	dst := db.Key(args[1])
+	dst, ok := keys[args[1]]
 	def := db.RUnlock
-	if dst == nil {
+	if !ok {
 		// Destination does not exist, upgrade db lock
 		db.RUnlock()
 		db.Lock()
 		def = db.Unlock
+
+		// Re-read the destination, as it may have changed during db lock upgrade
+		dst, ok = keys[args[1]]
+		if !ok {
+			// Create the destination key
+			dst = srv.NewKey(args[1], vals.NewList())
+			keys[args[1]] = dst
+		}
+		// Re-read the source key, as it may have changed during db lock upgrade
+		src, ok = keys[args[0]]
+		if !ok {
+			// src does not exist anymore, return nil
+			db.Unlock()
+			return nil, nil
+		}
 	}
 	defer def()
+
+	// At this point, both src and dst exist and are separate keys
+	src.Lock()
+	defer src.Unlock()
+	dst.Lock()
+	defer dst.Unlock()
+
+	// Get the values, make sure both are Lists
+	vs, vd := src.Val(), dst.Val()
+	vsrc, oksrc := vs.(vals.List)
+	vdst, okdst := vd.(vals.List)
+	if !oksrc || !okdst {
+		return nil, cmd.ErrInvalidValType
+	}
+
+	// Both are lists, proceed
+	val, ok := vsrc.RPop()
+	if ok {
+		vdst.LPush(val)
+		return val, nil
+	}
+	return nil, nil
+}
+
+var rpush = cmd.NewSingleKeyCmd(
+	&cmd.ArgDef{
+		MinArgs: 2,
+		MaxArgs: -1,
+	},
+	srv.NoKeyCreateList,
+	rpushFn)
+
+func rpushFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
+	k.Lock()
+	defer k.Unlock()
+
+	v := k.Val()
+	if v, ok := v.(vals.List); ok {
+		return v.RPush(args[1:]...), nil
+	}
+	return nil, cmd.ErrInvalidValType
+}
+
+var rpushx = cmd.NewSingleKeyCmd(
+	&cmd.ArgDef{
+		MinArgs: 2,
+		MaxArgs: 2,
+	},
+	srv.NoKeyNone,
+	rpushxFn)
+
+func rpushxFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
+	if k == nil {
+		return int64(0), nil
+	}
+
+	k.Lock()
+	defer k.Unlock()
+
+	v := k.Val()
+	if v, ok := v.(vals.List); ok {
+		return v.RPush(args[1:]...), nil
+	}
+	return nil, cmd.ErrInvalidValType
 }
