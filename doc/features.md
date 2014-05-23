@@ -1,8 +1,24 @@
 # gred - feature coverage
 
+Legend: `√` means fully supported, `ø` means not supported, and `≈` means partially supported (see comment for details).
+
+## High-Level Features
+
+This is a *tl;dr;* version of the 2.8 Redis-compatibility status of the project.
+
+* `redis-cli` and RESP-based clients compatibility: √
+* Pipelining: ≈ (to be tested)
+* Telnet: ø
+* Clustering, sharding, partitioning, replication, twemproxy support: ø
+* Signal handling: ø
+* Persistence: ø
+* Configuration: ø
+
+The commands support is detailed in the next section.
+
 ## Commands
 
-This section lists the implemented commands. `√` means fully supported, `ø` means not supported, and `≈` means partially supported.
+This section lists the implemented commands. 
 
 The commands are listed by category, as it is on the [redis website][redis].
 
@@ -102,3 +118,128 @@ The commands are listed by category, as it is on the [redis website][redis].
 | RPUSHX           | √      | |
 
 ### Sets
+
+| Command          | Status | Comment                                |
+| ---------------- | :----: | -------------------------------------- |
+| SADD             | ø      | |
+| SCARD            | ø      | |
+| SDIFF            | ø      | |
+| SDIFFSTORE       | ø      | |
+| SINTER           | ø      | |
+| SINTERSTORE      | ø      | |
+| SISMEMBER        | ø      | |
+| SMEMBERS         | ø      | |
+| SMOVE            | ø      | |
+| SPOP             | ø      | |
+| SRANDMEMBER      | ø      | |
+| SREM             | ø      | |
+| SSCAN            | ø      | |
+| SUNION           | ø      | |
+| SUNIONSTORE      | ø      | |
+
+### Sorted Sets
+
+| Command          | Status | Comment                                |
+| ---------------- | :----: | -------------------------------------- |
+| ZADD             | ø      | |
+| ZCARD            | ø      | |
+| ZCOUNT           | ø      | |
+| ZINCRBY          | ø      | |
+| ZINTERSTORE      | ø      | |
+| ZLEXCOUNT        | ø      | |
+| ZRANGE           | ø      | |
+| ZRANGEBYLEX      | ø      | |
+| ZRANGEBYSCORE    | ø      | |
+| ZRANK            | ø      | |
+| ZREM             | ø      | |
+| ZREMRANGEBYLEX   | ø      | |
+| ZREMRANGEBYRANK  | ø      | |
+| ZREMRANGEBYSCORE | ø      | |
+| ZREVRANGE        | ø      | |
+| ZREVRANGEBYSCORE | ø      | |
+| ZREVRANK         | ø      | |
+| ZSCAN            | ø      | |
+| ZSCORE           | ø      | |
+| ZUNIONSTORE      | ø      | |
+
+### HyperLogLog
+
+| Command          | Status | Comment                                |
+| ---------------- | :----: | -------------------------------------- |
+| PFADD            | ø      | |
+| PFCOUNT          | ø      | |
+| PFMERGE          | ø      | |
+
+### Pub/Sub
+
+| Command          | Status | Comment                                |
+| ---------------- | :----: | -------------------------------------- |
+| PSUBSCRIBE       | ø      | |
+| PUBLISH          | ø      | |
+| PUBSUB           | ø      | |
+| PUNSUBSCRIBE     | ø      | |
+| SUBSCRIBE        | ø      | |
+| UNSUBSCRIBE      | ø      | |
+
+### Transactions
+
+| Command          | Status | Comment                                |
+| ---------------- | :----: | -------------------------------------- |
+| DISCARD          | ø      | |
+| EXEC             | ø      | |
+| MULTI            | ø      | |
+| UNWATCH          | ø      | |
+| WATCH            | ø      | |
+
+### Scripting
+
+| Command          | Status | Comment                                |
+| ---------------- | :----: | -------------------------------------- |
+| EVAL             | ø      | |
+| EVALSHA          | ø      | |
+| SCRIPT EXISTS    | ø      | |
+| SCRIPT FLUSH     | ø      | |
+| SCRIPT KILL      | ø      | |
+| SCRIPT LOAD      | ø      | |
+
+### Connection
+
+| Command          | Status | Comment                                |
+| ---------------- | :----: | -------------------------------------- |
+| AUTH             | ø      | |
+| ECHO             | √      | |
+| PING             | √      | |
+| QUIT             | √      | |
+| SELECT           | ø      | |
+
+### Server
+
+| Command          | Status | Comment                                |
+| ---------------- | :----: | -------------------------------------- |
+| BGREWRITEAOF     | ø      | |
+| BGSAVE           | ø      | |
+| CLIENT GETNAME   | ø      | |
+| CLIENT KILL      | ø      | |
+| CLIENT LIST      | ø      | |
+| CLIENT PAUSE     | ø      | |
+| CLIENT SETNAME   | ø      | |
+| CONFIG GET       | ø      | |
+| CONFIG RESETSTAT | ø      | |
+| CONFIG REWRITE   | ø      | |
+| CONFIG SET       | ø      | |
+| DBSIZE           | ø      | |
+| DEBUG OBJECT     | ø      | |
+| DEBUG SEGFAULT   | ø      | |
+| FLUSHALL         | ø      | |
+| FLUSHDB          | ø      | |
+| INFO             | ø      | |
+| LASTSAVE         | ø      | |
+| MONITOR          | ø      | |
+| SAVE             | ø      | |
+| SHUTDOWN         | ø      | |
+| SLAVEOF          | ø      | |
+| SLOWLOG          | ø      | |
+| SYNC             | ø      | |
+| TIME             | ø      | |
+
+[redis]: http://redis.io/commands
