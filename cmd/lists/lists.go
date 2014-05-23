@@ -273,3 +273,49 @@ func rpopFn(k srv.Key, args []string, ints []int64, floats []float64) (interface
 	}
 	return nil, cmd.ErrInvalidValType
 }
+
+var rpoplpush = cmd.NewDBCmd(
+	&cmd.ArgDef{
+		MinArgs: 2,
+		MaxArgs: 2,
+	},
+	rpoplpushFn)
+
+func rpoplpushFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
+	db.RLock()
+	src := db.Key(args[0])
+	if src == nil {
+		// Source key does not exist, return nil
+		db.RUnlock()
+		return nil, nil
+	}
+
+	// If source and destination is the same
+	if args[0] == args[1] {
+		defer db.RUnlock()
+		src.Lock()
+		defer src.Unlock()
+
+		v := src.Val()
+		if v, ok := v.(vals.List); ok {
+			val, ok := v.RPop()
+			if ok {
+				v.LPush(val)
+				return val, nil
+			}
+			return nil, nil
+		}
+		return nil, cmd.ErrInvalidValType
+	}
+
+	// Otherwise get the destination key, and create it if it doesn't exist
+	dst := db.Key(args[1])
+	def := db.RUnlock
+	if dst == nil {
+		// Destination does not exist, upgrade db lock
+		db.RUnlock()
+		db.Lock()
+		def = db.Unlock
+	}
+	defer def()
+}

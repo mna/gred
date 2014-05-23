@@ -39,6 +39,7 @@ type DB interface {
 	Type(string) string
 
 	Key(string) Key
+	SetKey(string, Key)
 	LockGetKey(string, NoKeyFlag) (Key, func())
 }
 
@@ -173,6 +174,10 @@ func (d *db) Key(name string) Key {
 	return d.keys[name]
 }
 
+func (d *db) SetKey(name string, k Key) {
+	d.keys[name] = k
+}
+
 func (d *db) LockGetKey(name string, flag NoKeyFlag) (Key, func()) {
 	d.RLock()
 	ret := d.RUnlock
@@ -201,7 +206,7 @@ func (d *db) LockGetKey(name string, flag NoKeyFlag) (Key, func()) {
 	case NoKeyCreateStringInt:
 		k = newKey(name, vals.NewIncString("0"))
 	case NoKeyCreateHash:
-		k = newKey(name, vals.NewHash())
+		k = newKey(name, vals.NewIncHash())
 	case NoKeyCreateList:
 		k = newKey(name, vals.NewList())
 	default:

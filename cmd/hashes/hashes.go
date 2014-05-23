@@ -13,6 +13,8 @@ func init() {
 	cmd.Register("hexists", hexists)
 	cmd.Register("hget", hget)
 	cmd.Register("hgetall", hgetall)
+	cmd.Register("hincrby", hincrby)
+	cmd.Register("hincrbyfloat", hincrbyfloat)
 	cmd.Register("hkeys", hkeys)
 	cmd.Register("hlen", hlen)
 	cmd.Register("hmget", hmget)
@@ -99,6 +101,54 @@ func hgetallFn(k srv.Key, args []string, ints []int64, floats []float64) (interf
 	v := k.Val()
 	if v, ok := v.(vals.Hash); ok {
 		return v.HGetAll(), nil
+	}
+	return nil, cmd.ErrInvalidValType
+}
+
+var hincrby = cmd.NewSingleKeyCmd(
+	&cmd.ArgDef{
+		MinArgs:    3,
+		MaxArgs:    3,
+		IntIndices: []int{2},
+	},
+	srv.NoKeyCreateHash,
+	hincrbyFn)
+
+func hincrbyFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
+	k.Lock()
+	defer k.Unlock()
+
+	v := k.Val()
+	if v, ok := v.(vals.IncHash); ok {
+		val, ok := v.HIncrBy(args[1], ints[0])
+		if ok {
+			return val, nil
+		}
+		return nil, cmd.ErrHashFieldNotInt
+	}
+	return nil, cmd.ErrInvalidValType
+}
+
+var hincrbyfloat = cmd.NewSingleKeyCmd(
+	&cmd.ArgDef{
+		MinArgs:      3,
+		MaxArgs:      3,
+		FloatIndices: []int{2},
+	},
+	srv.NoKeyCreateHash,
+	hincrbyfloatFn)
+
+func hincrbyfloatFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
+	k.Lock()
+	defer k.Unlock()
+
+	v := k.Val()
+	if v, ok := v.(vals.IncHash); ok {
+		val, ok := v.HIncrByFloat(args[1], floats[0])
+		if ok {
+			return val, nil
+		}
+		return nil, cmd.ErrHashFieldNotFloat
 	}
 	return nil, cmd.ErrInvalidValType
 }

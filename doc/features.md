@@ -68,8 +68,8 @@ The commands are listed by category, as it is on the [redis website][redis].
 | HEXISTS          | √      |                                        |
 | HGET             | √      |                                        |
 | HGETALL          | √      |                                        |
-| HINCRBY          | ø      |                                        |
-| HINCRBYFLOAT     | ø      |                                        |
+| HINCRBY          | √      |                                        |
+| HINCRBYFLOAT     | √      |                                        |
 | HKEYS            | √      |                                        |
 | HLEN             | √      |                                        |
 | HMGET            | √      |                                        |
