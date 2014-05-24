@@ -5,6 +5,32 @@ import (
 	"testing"
 )
 
+func TestLPush(t *testing.T) {
+	cases := []struct {
+		l    []string
+		vals []string
+		exp  []string
+	}{
+		0: {nil, nil, nil},
+		1: {[]string{}, []string{}, []string{}},
+		2: {[]string{}, []string{"a"}, []string{"a"}},
+		3: {[]string{}, []string{"a", "b", "c"}, []string{"c", "b", "a"}},
+		4: {[]string{"a", "b"}, []string{"x", "y", "z"}, []string{"z", "y", "x", "a", "b"}},
+		5: {[]string{}, []string{"c", "b", "a"}, []string{"a", "b", "c"}},
+	}
+	for i, c := range cases {
+		l := list(c.l)
+		got := l.LPush(c.vals...)
+		if got != int64(len(c.exp)) {
+			t.Errorf("%d: expected length of %d, got %d", i, len(c.exp), got)
+		}
+		if !reflect.DeepEqual([]string(l), c.exp) {
+			t.Errorf("%d: expected %v, got %v", i, c.exp, l)
+		}
+		t.Logf("%d: %v", i, l)
+	}
+}
+
 func TestLInsertBefore(t *testing.T) {
 	cases := []struct {
 		l        []string

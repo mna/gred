@@ -1,7 +1,5 @@
 package vals
 
-import "sort"
-
 type List interface {
 	Value
 
@@ -90,8 +88,10 @@ func (l *list) LPop() (string, bool) {
 }
 
 func (l *list) LPush(vals ...string) int64 {
-	// Reverse sort, then append
-	sort.Sort(sort.Reverse(sort.StringSlice(vals)))
+	// Reverse vals, then append
+	for i, j := 0, len(vals)-1; i < j; i, j = i+1, j-1 {
+		vals[i], vals[j] = vals[j], vals[i]
+	}
 	*l = append(vals, *l...)
 	return int64(len(*l))
 }
