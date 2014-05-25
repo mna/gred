@@ -9,7 +9,6 @@ type Set interface {
 	SInter(...Set) []string
 	SIsMember(string) bool
 	SMembers() []string
-	SPop() (string, bool)
 	SRem(...string) int64
 	SUnion(...Set) []string
 
@@ -17,7 +16,17 @@ type Set interface {
 	get() set
 }
 
+var _ Set = (*set)(nil)
+
 type set map[string]struct{}
+
+func NewSet() Set {
+	return make(set)
+}
+
+func (s set) Type() string {
+	return "set"
+}
 
 func (s set) SAdd(vals ...string) int64 {
 	var cnt int64
@@ -99,6 +108,20 @@ func (s set) SRem(vals ...string) int64 {
 		}
 	}
 	return cnt
+}
+
+func (s set) SUnion(sets ...Set) []string {
+	ret := make(set, len(s))
+	for k := range s {
+		ret[k] = struct{}{}
+	}
+	for _, otherSet := range sets {
+		m := otherSet.get()
+		for k := range m {
+			ret[k] = struct{}{}
+		}
+	}
+	return ret.SMembers()
 }
 
 func (s set) get() set {
