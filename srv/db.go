@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/gred/vals"
-	"github.com/golang/glog"
 )
 
 type NoKeyFlag int
@@ -181,11 +180,9 @@ func (d *db) LockGetKey(name string, flag NoKeyFlag) (Key, func()) {
 	d.RLock()
 	ret := d.RUnlock
 	if k, ok := d.keys[name]; ok {
-		glog.V(2).Infof("db %d: found key %s", d.ix, name)
 		return k, ret
 	}
 
-	glog.V(2).Infof("db %d: key %s does not exist", d.ix, name)
 	// Key does not exist, what to do?
 	switch flag {
 	case NoKeyNone:
@@ -198,6 +195,13 @@ func (d *db) LockGetKey(name string, flag NoKeyFlag) (Key, func()) {
 	d.RUnlock()
 	d.Lock()
 	ret = d.Unlock
+
+	// Check if key now exists (added during the lock upgrade)
+	if k, ok := d.keys[name]; ok {
+		return k, ret
+	}
+
+	// Still no chance, create as requested
 	var k Key
 	switch flag {
 	case NoKeyCreateString:

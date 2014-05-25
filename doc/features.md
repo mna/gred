@@ -124,11 +124,11 @@ The commands are listed by category, as it is on the [redis website][redis].
 | SADD             | √      | |
 | SCARD            | √      | |
 | SDIFF            | √      | |
-| SDIFFSTORE       | ø      | |
+| SDIFFSTORE       | √      | |
 | SINTER           | ø      | |
 | SINTERSTORE      | ø      | |
-| SISMEMBER        | ø      | |
-| SMEMBERS         | ø      | |
+| SISMEMBER        | √      | |
+| SMEMBERS         | √      | |
 | SMOVE            | ø      | |
 | SPOP             | ø      | |
 | SRANDMEMBER      | ø      | |
