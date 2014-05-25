@@ -121,9 +121,9 @@ The commands are listed by category, as it is on the [redis website][redis].
 
 | Command          | Status | Comment                                |
 | ---------------- | :----: | -------------------------------------- |
-| SADD             | ø      | |
-| SCARD            | ø      | |
-| SDIFF            | ø      | |
+| SADD             | √      | |
+| SCARD            | √      | |
+| SDIFF            | √      | |
 | SDIFFSTORE       | ø      | |
 | SINTER           | ø      | |
 | SINTERSTORE      | ø      | |

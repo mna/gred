@@ -208,6 +208,8 @@ func (d *db) LockGetKey(name string, flag NoKeyFlag) (Key, func()) {
 		k = NewKey(name, vals.NewIncHash())
 	case NoKeyCreateList:
 		k = NewKey(name, vals.NewList())
+	case NoKeyCreateSet:
+		k = NewKey(name, vals.NewSet())
 	default:
 		panic(fmt.Sprintf("db.Key NoKeyFlag not implemented: %d", flag))
 	}

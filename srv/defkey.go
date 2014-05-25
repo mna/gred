@@ -15,6 +15,7 @@ var (
 	_ vals.String = (*defVal)(nil)
 	_ vals.Hash   = (*defVal)(nil)
 	_ vals.List   = (*defVal)(nil)
+	_ vals.Set    = (*defVal)(nil)
 )
 
 type defKey string
@@ -68,3 +69,13 @@ func (d defVal) LSet(_ int64, _ string) bool     { return false }
 func (d defVal) LTrim(_, _ int64)                {}
 func (d defVal) RPop() (string, bool)            { return "", false }
 func (d defVal) RPush(_ ...string) int64         { return 0 }
+
+// Sets implementation
+func (d defVal) SAdd(_ ...string) int64        { return 0 }
+func (d defVal) SCard() int64                  { return 0 }
+func (d defVal) SDiff(_ ...vals.Set) []string  { return empty }
+func (d defVal) SInter(_ ...vals.Set) []string { return empty }
+func (d defVal) SIsMember(_ string) bool       { return false }
+func (d defVal) SMembers() []string            { return empty }
+func (d defVal) SRem(_ ...string) int64        { return 0 }
+func (d defVal) SUnion(_ ...vals.Set) []string { return empty }

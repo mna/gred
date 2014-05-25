@@ -11,9 +11,6 @@ type Set interface {
 	SMembers() []string
 	SRem(...string) int64
 	SUnion(...Set) []string
-
-	// Private method to get the internal map
-	get() set
 }
 
 var _ Set = (*set)(nil)
@@ -45,14 +42,13 @@ func (s set) SCard() int64 {
 }
 
 func (s set) SDiff(vals ...Set) []string {
-	var ret []string
 	var ok bool
 
-	for k := range s.get() {
+	ret := []string{}
+	for k := range s {
 		ok = true
 		for _, other := range vals {
-			otherSet := other.get()
-			if _, ex := otherSet[k]; ex {
+			if ex := other.SIsMember(k); ex {
 				ok = false
 				break
 			}
@@ -65,14 +61,13 @@ func (s set) SDiff(vals ...Set) []string {
 }
 
 func (s set) SInter(vals ...Set) []string {
-	var ret []string
 	var ok bool
 
-	for k := range s.get() {
+	ret := []string{}
+	for k := range s {
 		ok = true
 		for _, other := range vals {
-			otherSet := other.get()
-			if _, ex := otherSet[k]; !ex {
+			if ex := other.SIsMember(k); !ex {
 				ok = false
 				break
 			}
@@ -85,7 +80,7 @@ func (s set) SInter(vals ...Set) []string {
 }
 
 func (s set) SIsMember(val string) bool {
-	_, ok := s.get()[val]
+	_, ok := s[val]
 	return ok
 }
 
@@ -116,14 +111,10 @@ func (s set) SUnion(sets ...Set) []string {
 		ret[k] = struct{}{}
 	}
 	for _, otherSet := range sets {
-		m := otherSet.get()
-		for k := range m {
+		m := otherSet.SMembers()
+		for _, k := range m {
 			ret[k] = struct{}{}
 		}
 	}
 	return ret.SMembers()
-}
-
-func (s set) get() set {
-	return s
 }
