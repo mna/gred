@@ -23,15 +23,36 @@ var (
 	// response should be returned.
 	OKVal = resp.OK{}
 
-	ErrNotInteger        = errors.New("ERR value is not an integer or out of range")
-	ErrNotFloat          = errors.New("ERR value is not a valid float")
-	ErrInvalidValType    = errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
-	ErrSyntax            = errors.New("ERR syntax error")
-	ErrNoSuchKey         = errors.New("ERR no such key")
-	ErrOutOfRange        = errors.New("ERR index out of range")
-	ErrHashFieldNotInt   = errors.New("ERR hash value is not an integer")
+	// ErrNotInteger is returned when an argument that is expected to be an integer
+	// cannot be parsed as an integer.
+	ErrNotInteger = errors.New("ERR value is not an integer or out of range")
+
+	// ErrNotFloat is returned when an argument that is expected to be a float
+	// cannot be parsed as a float.
+	ErrNotFloat = errors.New("ERR value is not a valid float")
+
+	// ErrInvalidValType is returned when the key's value is not of the expected type.
+	ErrInvalidValType = errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+
+	// ErrSyntax is returned when an argument doesn't have the expected allowed syntax.
+	ErrSyntax = errors.New("ERR syntax error")
+
+	// ErrNoSuchKey is returned when a command is attempted against a non-existing key.
+	ErrNoSuchKey = errors.New("ERR no such key")
+
+	// ErrOutOfRange is returned when an argument is out of range.
+	ErrOutOfRange = errors.New("ERR index out of range")
+
+	// ErrHashFieldNotInt is returned when an increment operation is attempted on
+	// a hash field that does not contain an integer value.
+	ErrHashFieldNotInt = errors.New("ERR hash value is not an integer")
+
+	// ErrHashFieldNotFloat is returned when an increment operation is attempted on
+	// a hash field that does not contain a float value.
 	ErrHashFieldNotFloat = errors.New("ERR hash value is not a valid float")
 
+	// ErrQuit is a sentinel error value to indicate that the network connection
+	// should be closed, as requested by the client.
 	ErrQuit = errors.New("quit")
 )
 
@@ -56,13 +77,17 @@ type Cmd interface {
 	Parse(string, []string) ([]string, []int64, []float64, error)
 }
 
+// SrvFn defines the function signature required for the SrvCmd implementation.
 type SrvFn func([]string, []int64, []float64) (interface{}, error)
 
+// SrvCmd defines the methods required to implement a server command.
 type SrvCmd interface {
 	Cmd
 	Exec([]string, []int64, []float64) (interface{}, error)
 }
 
+// NewSrvCmd creates a new SrvCmd value with the specified argument definition
+// and execution function.
 func NewSrvCmd(arg *ArgDef, fn SrvFn) SrvCmd {
 	return &srvCmd{
 		arg,
@@ -79,6 +104,7 @@ func (s *srvCmd) Exec(args []string, ints []int64, floats []float64) (interface{
 	return s.fn(args, ints, floats)
 }
 
+// DBCmd defines the methods required to implement a database command.
 type DBCmd interface {
 	Cmd
 	ExecWithDB(srv.DB, []string, []int64, []float64) (interface{}, error)
