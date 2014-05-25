@@ -88,3 +88,10 @@ func sdiffFn(db srv.DB, args []string, ints []int64, floats []float64) (interfac
 
 	return diffSets[0].SDiff(diffSets[1:]...), nil
 }
+
+var sdiffstore = cmd.NewDBCmd(
+	&cmd.ArgDef{
+		MinArgs: 2,
+		MaxArgs: -1,
+	},
+	sdiffstoreFn)
