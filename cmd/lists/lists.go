@@ -98,15 +98,25 @@ func llenFn(k srv.Key, args []string, ints []int64, floats []float64) (interface
 	return nil, cmd.ErrInvalidValType
 }
 
-var lpop = cmd.NewSingleKeyCmd(
+var lpop = cmd.NewDBCmd(
 	&cmd.ArgDef{
 		MinArgs: 1,
 		MaxArgs: 1,
 	},
-	srv.NoKeyDefaultVal,
 	lpopFn)
 
-func lpopFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
+func lpopFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
+	db.RLock()
+
+	// Get the key
+	k, ok := db.Keys()[args[0]]
+	// If the key does not exist, return nil
+	if !ok {
+		db.RUnlock()
+		return nil, nil
+	}
+
+	// Pop the value
 	k.Lock()
 	defer k.Unlock()
 
@@ -114,11 +124,26 @@ func lpopFn(k srv.Key, args []string, ints []int64, floats []float64) (interface
 	if v, ok := v.(vals.List); ok {
 		val, ok := v.LPop()
 		if ok {
-			// TODO : Remove key if llen = 0
+			// If the list is now empty, delete the key
+			if v.LLen() == 0 {
+				// Upgrade the db lock. Since the key lock is maintained and exclusive,
+				// it cannot change during the db key upgrade.
+				db.RUnlock()
+				db.Lock()
+				// Get the keys again
+				keys := db.Keys()
+				k.Abort()
+				delete(keys, k.Name())
+				db.Unlock()
+				return val, nil
+			}
+			db.RUnlock()
 			return val, nil
 		}
+		db.RUnlock()
 		return nil, nil
 	}
+	db.RUnlock()
 	return nil, cmd.ErrInvalidValType
 }
 

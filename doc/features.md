@@ -105,7 +105,7 @@ The commands are listed by category, as it is on the [redis website][redis].
 | LINDEX           | √      | |
 | LINSERT          | √      | |
 | LLEN             | √      | |
-| LPOP             | ≈      | Does not remove key if list is empty.  |
+| LPOP             | √      | |
 | LPUSH            | √      | |
 | LPUSHX           | √      | |
 | LRANGE           | √      | |
