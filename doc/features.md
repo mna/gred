@@ -80,7 +80,7 @@ The commands are listed by category, as it is on the [redis website][redis].
 
 | Command          | Status | Comment                                |
 | ---------------- | :----: | -------------------------------------- |
-| HDEL             | ≈      | Does not remove the key once empty.    |
+| HDEL             | √      | Removes the key once empty.            |
 | HEXISTS          | √      |                                        |
 | HGET             | √      |                                        |
 | HGETALL          | √      |                                        |
@@ -105,15 +105,15 @@ The commands are listed by category, as it is on the [redis website][redis].
 | LINDEX           | √      | |
 | LINSERT          | √      | |
 | LLEN             | √      | |
-| LPOP             | √      | |
+| LPOP             | √      | Removes the key once empty.            |
 | LPUSH            | √      | |
 | LPUSHX           | √      | |
 | LRANGE           | √      | |
 | LREM             | ≈      | Does not remove key if list is empty.  |
 | LSET             | √      | |
-| LTRIM            | √      | |
-| RPOP             | √      | |
-| RPOPLPUSH        | √      | |
+| LTRIM            | ≈      | Does not remove key if list is empty.  |
+| RPOP             | ≈      | Does not remove key if list is empty.  |
+| RPOPLPUSH        | ≈      | Does not remove key if list is empty.  |
 | RPUSH            | √      | |
 | RPUSHX           | √      | |
 
@@ -130,9 +130,9 @@ The commands are listed by category, as it is on the [redis website][redis].
 | SISMEMBER        | √      | |
 | SMEMBERS         | √      | |
 | SMOVE            | ø      | |
-| SPOP             | ø      | |
+| SPOP             | ø      | * |
 | SRANDMEMBER      | ø      | |
-| SREM             | ø      | |
+| SREM             | ø      | * |
 | SSCAN            | ø      | |
 | SUNION           | ø      | |
 | SUNIONSTORE      | ø      | |

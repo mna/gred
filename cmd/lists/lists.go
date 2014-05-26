@@ -106,44 +106,29 @@ var lpop = cmd.NewDBCmd(
 	lpopFn)
 
 func lpopFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
-	db.RLock()
+	k, unl := db.LockGetKey(args[0], srv.NoKeyDefaultVal)
 
-	// Get the key
-	k, ok := db.Keys()[args[0]]
-	// If the key does not exist, return nil
-	if !ok {
-		db.RUnlock()
-		return nil, nil
-	}
-
-	// Pop the value
+	// Lock the key
 	k.Lock()
 	defer k.Unlock()
 
+	// Pop the value
 	v := k.Val()
 	if v, ok := v.(vals.List); ok {
 		val, ok := v.LPop()
 		if ok {
 			// If the list is now empty, delete the key
 			if v.LLen() == 0 {
-				// Upgrade the db lock. Since the key lock is maintained and exclusive,
-				// it cannot change during the db key upgrade.
-				db.RUnlock()
-				db.Lock()
-				// Get the keys again
-				keys := db.Keys()
-				k.Abort()
-				delete(keys, k.Name())
-				db.Unlock()
-				return val, nil
+				// Will upgrade the db lock to an exclusive lock
+				unl = db.UpgradeLockDelKey(args[0])
 			}
-			db.RUnlock()
+			unl()
 			return val, nil
 		}
-		db.RUnlock()
+		unl()
 		return nil, nil
 	}
-	db.RUnlock()
+	unl()
 	return nil, cmd.ErrInvalidValType
 }
 

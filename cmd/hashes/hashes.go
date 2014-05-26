@@ -24,23 +24,35 @@ func init() {
 	cmd.Register("hvals", hvals)
 }
 
-var hdel = cmd.NewSingleKeyCmd(
+var hdel = cmd.NewDBCmd(
 	&cmd.ArgDef{
 		MinArgs: 2,
 		MaxArgs: -1,
 	},
-	srv.NoKeyDefaultVal,
 	hdelFn)
 
-// TODO : Remove key if empty after del
-func hdelFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
+func hdelFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
+	k, unl := db.LockGetKey(args[0], srv.NoKeyDefaultVal)
+
+	// Lock the key
 	k.Lock()
 	defer k.Unlock()
 
+	// Delete the values
 	v := k.Val()
 	if v, ok := v.(vals.Hash); ok {
-		return v.HDel(args[1:]...), nil
+		ret := v.HDel(args[1:]...)
+		if ret > 0 {
+			// Is it now an empty hash?
+			if v.HLen() == 0 {
+				// Will upgrade the db lock to an exclusive lock
+				unl = db.UpgradeLockDelKey(args[0])
+			}
+		}
+		unl()
+		return ret, nil
 	}
+	unl()
 	return nil, cmd.ErrInvalidValType
 }
 

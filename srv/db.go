@@ -38,8 +38,11 @@ type DB interface {
 	Type(string) string
 
 	Keys() map[string]Key
+	UpgradeLockDelKey(string) func()
 	LockGetKey(string, NoKeyFlag) (Key, func())
 }
+
+var _ DB = (*db)(nil)
 
 type db struct {
 	sync.RWMutex
@@ -172,8 +175,20 @@ func (d *db) Keys() map[string]Key {
 	return d.keys
 }
 
-func (d *db) SetKey(name string, k Key) {
-	d.keys[name] = k
+// UpgradeLockDelKey upgrades the DB lock to an exclusive lock, and deletes
+// the specified key. It is assumed the caller has an exclusive lock for this
+// key. It returns the unlock method to call to release the DB lock.
+func (d *db) UpgradeLockDelKey(name string) func() {
+	// Upgrade the db lock. Since the key lock is maintained and exclusive,
+	// it cannot change during the db key upgrade.
+	d.RUnlock()
+	d.Lock()
+	k, ok := d.keys[name]
+	if ok {
+		k.Abort()
+		delete(d.keys, name)
+	}
+	return d.Unlock
 }
 
 func (d *db) LockGetKey(name string, flag NoKeyFlag) (Key, func()) {
