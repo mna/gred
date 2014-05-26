@@ -109,10 +109,10 @@ The commands are listed by category, as it is on the [redis website][redis].
 | LPUSH            | √      | |
 | LPUSHX           | √      | |
 | LRANGE           | √      | |
-| LREM             | ≈      | Does not remove key if list is empty.  |
+| LREM             | √      | Removes the key once empty.            |
 | LSET             | √      | |
-| LTRIM            | ≈      | Does not remove key if list is empty.  |
-| RPOP             | ≈      | Does not remove key if list is empty.  |
+| LTRIM            | √      | Removes the key once empty.            |
+| RPOP             | √      | Removes the key once empty.            |
 | RPOPLPUSH        | ≈      | Does not remove key if list is empty.  |
 | RPUSH            | √      | |
 | RPUSHX           | √      | |

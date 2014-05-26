@@ -194,24 +194,36 @@ func lrangeFn(k srv.Key, args []string, ints []int64, floats []float64) (interfa
 	return nil, cmd.ErrInvalidValType
 }
 
-var lrem = cmd.NewSingleKeyCmd(
+var lrem = cmd.NewDBCmd(
 	&cmd.ArgDef{
 		MinArgs:    3,
 		MaxArgs:    3,
 		IntIndices: []int{1},
 	},
-	srv.NoKeyDefaultVal,
 	lremFn)
 
-func lremFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
+func lremFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
+	k, unl := db.LockGetKey(args[0], srv.NoKeyDefaultVal)
+
+	// Lock the key
 	k.Lock()
 	defer k.Unlock()
 
+	// Remove the value(s)
 	v := k.Val()
 	if v, ok := v.(vals.List); ok {
-		// TODO : Delete key if no more elements
-		return v.LRem(ints[0], args[2]), nil
+		val := v.LRem(ints[0], args[2])
+		if val > 0 {
+			// If the list is now empty, delete the key
+			if v.LLen() == 0 {
+				// Will upgrade the db lock to an exclusive lock
+				unl = db.UpgradeLockDelKey(args[0])
+			}
+		}
+		unl()
+		return val, nil
 	}
+	unl()
 	return nil, cmd.ErrInvalidValType
 }
 
@@ -243,47 +255,68 @@ func lsetFn(k srv.Key, args []string, ints []int64, floats []float64) (interface
 	return nil, cmd.ErrInvalidValType
 }
 
-var ltrim = cmd.NewSingleKeyCmd(
+var ltrim = cmd.NewDBCmd(
 	&cmd.ArgDef{
 		MinArgs:    3,
 		MaxArgs:    3,
 		IntIndices: []int{1, 2},
 	},
-	srv.NoKeyDefaultVal,
 	ltrimFn)
 
-func ltrimFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
+func ltrimFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
+	k, unl := db.LockGetKey(args[0], srv.NoKeyDefaultVal)
+
+	// Lock the key
 	k.Lock()
 	defer k.Unlock()
 
+	// Trim the value
 	v := k.Val()
 	if v, ok := v.(vals.List); ok {
 		v.LTrim(ints[0], ints[1])
+		// If the list is now empty, delete the key
+		if v.LLen() == 0 {
+			// Will upgrade the db lock to an exclusive lock
+			unl = db.UpgradeLockDelKey(args[0])
+		}
+		unl()
 		return cmd.OKVal, nil
 	}
+	unl()
 	return nil, cmd.ErrInvalidValType
 }
 
-var rpop = cmd.NewSingleKeyCmd(
+var rpop = cmd.NewDBCmd(
 	&cmd.ArgDef{
 		MinArgs: 1,
 		MaxArgs: 1,
 	},
-	srv.NoKeyDefaultVal,
 	rpopFn)
 
-func rpopFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
+func rpopFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
+	k, unl := db.LockGetKey(args[0], srv.NoKeyDefaultVal)
+
+	// Lock the key
 	k.Lock()
 	defer k.Unlock()
 
+	// Pop the value
 	v := k.Val()
 	if v, ok := v.(vals.List); ok {
 		val, ok := v.RPop()
 		if ok {
+			// If the list is now empty, delete the key
+			if v.LLen() == 0 {
+				// Will upgrade the db lock to an exclusive lock
+				unl = db.UpgradeLockDelKey(args[0])
+			}
+			unl()
 			return val, nil
 		}
+		unl()
 		return nil, nil
 	}
+	unl()
 	return nil, cmd.ErrInvalidValType
 }
 
@@ -313,6 +346,8 @@ func rpoplpushFn(db srv.DB, args []string, ints []int64, floats []float64) (inte
 		defer src.Unlock()
 
 		// Simply rotate the value (pop at tail, push at head)
+		// Do not check if list is empty to delete it, since we push back
+		// to the same list.
 		v := src.Val()
 		if v, ok := v.(vals.List); ok {
 			val, ok := v.RPop()
@@ -326,6 +361,7 @@ func rpoplpushFn(db srv.DB, args []string, ints []int64, floats []float64) (inte
 	}
 
 	// Otherwise get the destination key, and create it if it doesn't exist
+	exclock := false
 	dst, ok := keys[args[1]]
 	def := db.RUnlock
 	if !ok {
@@ -333,6 +369,24 @@ func rpoplpushFn(db srv.DB, args []string, ints []int64, floats []float64) (inte
 		db.RUnlock()
 		db.Lock()
 		def = db.Unlock
+		exclock = true
+
+		keys = db.Keys()
+		// Re-read the source key, as it may have changed during db lock upgrade
+		src, ok = keys[args[0]]
+		if !ok {
+			// src does not exist anymore, return nil
+			def()
+			return nil, nil
+		}
+
+		// Exit early if the source key does not hold a List so that the dst
+		// is not created.
+		v := src.Val()
+		if _, ok = v.(vals.List); !ok {
+			def()
+			return nil, cmd.ErrInvalidValType
+		}
 
 		// Re-read the destination, as it may have changed during db lock upgrade
 		dst, ok = keys[args[1]]
@@ -340,13 +394,6 @@ func rpoplpushFn(db srv.DB, args []string, ints []int64, floats []float64) (inte
 			// Create the destination key
 			dst = srv.NewKey(args[1], vals.NewList())
 			keys[args[1]] = dst
-		}
-		// Re-read the source key, as it may have changed during db lock upgrade
-		src, ok = keys[args[0]]
-		if !ok {
-			// src does not exist anymore, return nil
-			db.Unlock()
-			return nil, nil
 		}
 	}
 	defer def()
@@ -368,6 +415,10 @@ func rpoplpushFn(db srv.DB, args []string, ints []int64, floats []float64) (inte
 	// Both are lists, proceed
 	val, ok := vsrc.RPop()
 	if ok {
+		// Check if the src is now empty, if so delete the key
+		if vsrc.LLen() == 0 {
+			// TODO : Need to know if an upgrade is required...
+		}
 		vdst.LPush(val)
 		return val, nil
 	}

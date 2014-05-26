@@ -181,6 +181,12 @@ func (d *db) Keys() map[string]Key {
 func (d *db) UpgradeLockDelKey(name string) func() {
 	// Upgrade the db lock. Since the key lock is maintained and exclusive,
 	// it cannot change during the db key upgrade.
+
+	// TODO : This doesn't work, this could lead to a deadlock if during the upgrade
+	// (between RUnlock and Lock), an exclusive operation is executed (i.e. a DEL on
+	// the locked key). The DB lock could be acquired, but would deadlock waiting on the
+	// key's lock.
+
 	d.RUnlock()
 	d.Lock()
 	k, ok := d.keys[name]
