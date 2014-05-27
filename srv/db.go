@@ -47,11 +47,16 @@ const (
 	NoKeyCreateSortedSet
 )
 
+// WaitChan is the channel type required for the blocking operations on Lists.
+type WaitChan <-chan chan<- [2]string
+
 // DB represents a Database, and defines the methods required to manipulate
 // its keys.
 type DB interface {
+	// Sync mutex interface
 	RWLocker
 
+	// DB-level commands
 	Del(...string) int
 	Exists(string) bool
 	Expire(string, int64, func()) bool
@@ -65,10 +70,15 @@ type DB interface {
 	TTL(string) int64
 	Type(string) string
 
+	// Keys access
 	Keys() map[string]Key
 	DelKey(string)
 	LockGetKey(string, NoKeyFlag) (Key, func())
 	XLockGetKey(string, NoKeyFlag) (Key, func())
+
+	// Blocking list waiters
+	WaitLPop(string, WaitChan)
+	WaitRPop(string, WaitChan)
 }
 
 // Static check to make sure *db implements the DB interface.
@@ -83,14 +93,37 @@ type db struct {
 
 	// the keys held by the database
 	keys map[string]Key
+
+	// Block list waiters
+	waitersChans  map[string][]WaitChan
+	waitersPopPos map[string][]bool
 }
 
 // NewDB creates a new DB value, with the specified index.
 func NewDB(ix int) DB {
 	return &db{
-		ix:   ix,
-		keys: make(map[string]Key),
+		ix:            ix,
+		keys:          make(map[string]Key),
+		waitersChans:  make(map[string][]WaitChan),
+		waitersPopPos: make(map[string][]bool),
 	}
+}
+
+func (d *db) WaitLPop(key string, ch WaitChan) {
+	d.waitPop(key, ch, false)
+}
+
+func (d *db) WaitRPop(key string, ch WaitChan) {
+	d.waitPop(key, ch, true)
+}
+
+func (d *db) waitPop(key string, ch WaitChan, rpop bool) {
+	slch := d.waitersChans[key]
+	slch = append(slch, ch)
+	d.waitersChans[key] = slch
+	slbl := d.waitersPopPos[key]
+	slbl = append(slbl, rpop)
+	d.waitersPopPos[key] = slbl
 }
 
 func (d *db) Del(names ...string) int {
@@ -272,7 +305,7 @@ func (d *db) lockGetKey(excl bool, name string, flag NoKeyFlag) (Key, func()) {
 	case NoKeyCreateHash:
 		k = NewKey(name, vals.NewIncHash())
 	case NoKeyCreateList:
-		k = NewKey(name, vals.NewBList(name))
+		k = NewKey(name, vals.NewList())
 	case NoKeyCreateSet:
 		k = NewKey(name, vals.NewSet())
 	default:
