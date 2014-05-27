@@ -13,13 +13,37 @@ import (
 type NoKeyFlag int
 
 const (
+	// NoKeyNone indicates that a nil key should be returned if the requested
+	// key does not exist.
 	NoKeyNone NoKeyFlag = iota
+
+	// NoKeyDefaultVal indicates that a the default key should be returned if the requested
+	// key does not exist. This key implements all value types, returning default values
+	// for each.
 	NoKeyDefaultVal
+
+	// NoKeyCreateString indicates that a key holding an empty string should be created if the
+	// requested key does not exist.
 	NoKeyCreateString
+
+	// NoKeyCreateStringInt indicates that a key holding string value of "0" should be created if the
+	// requested key does not exist.
 	NoKeyCreateStringInt
+
+	// NoKeyCreateHash indicates that a key holding an empty hash should be created if the
+	// requested key does not exist.
 	NoKeyCreateHash
+
+	// NoKeyCreateList indicates that a key holding an empty list should be created if the
+	// requested key does not exist.
 	NoKeyCreateList
+
+	// NoKeyCreateSet indicates that a key holding an empty set should be created if the
+	// requested key does not exist.
 	NoKeyCreateSet
+
+	// NoKeyCreateSortedSet indicates that a key holding an empty sorted set should be created if the
+	// requested key does not exist.
 	NoKeyCreateSortedSet
 )
 
