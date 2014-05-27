@@ -2,6 +2,7 @@ package lists
 
 import (
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/gred/cmd"
 	"github.com/PuerkitoBio/gred/srv"
@@ -9,6 +10,7 @@ import (
 )
 
 func init() {
+	cmd.Register("blpop", blpop)
 	cmd.Register("lindex", lindex)
 	cmd.Register("linsert", linsert)
 	cmd.Register("llen", llen)
@@ -23,6 +25,88 @@ func init() {
 	cmd.Register("rpoplpush", rpoplpush)
 	cmd.Register("rpush", rpush)
 	cmd.Register("rpushx", rpushx)
+}
+
+var blpop = cmd.NewDBCmd(
+	&cmd.ArgDef{
+		MinArgs:    2,
+		MaxArgs:    -1,
+		IntIndices: []int{-1},
+	},
+	blpopFn)
+
+func blpopFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
+	db.Lock()
+	unlocks := make([]func(), 0)
+	unlocks = append(unlocks, db.Unlock)
+
+	keys := db.Keys()
+	for _, nm := range args[:len(args)-1] { // last arg is the timeout
+		k, ok := keys[nm]
+		// Ignore non-existing keys
+		// TODO : Redis does not ignore non-existing keys, it actually listens for
+		// pushes on those keys, although they are not created (exists = 0) while
+		// waiting.
+		if ok {
+			// Lock the key
+			k.Lock()
+			unlocks = append(unlocks, k.Unlock)
+
+			// Get the value, if possible
+			v := k.Val()
+			if v, ok := v.(vals.List); ok {
+				val, ok := v.LPop()
+				if ok {
+					if v.LLen() == 0 {
+						db.DelKey(k.Name())
+					}
+					for i := len(unlocks) - 1; i >= 0; i-- {
+						unlocks[i]()
+					}
+					return val, nil
+				}
+			} else {
+				for i := len(unlocks) - 1; i >= 0; i-- {
+					unlocks[i]()
+				}
+				return nil, cmd.ErrInvalidValType
+			}
+		}
+	}
+
+	// If no value was readily available, now all keys are locked, enter
+	// the waiting workflow.
+	ch := make(chan chan<- [2]string)
+	for _, nm := range args[:len(args)-1] {
+		k, ok := keys[nm]
+		if ok {
+			v := k.Val().(vals.BList)
+			v.WaitLPop(ch)
+		}
+	}
+
+	// Prepare channels (timeout and receive values)
+	var timeoutCh <-chan time.Time
+	if ints[0] > 0 {
+		timeoutCh = time.After(time.Duration(ints[0]) * time.Second)
+	}
+	recCh := make(chan [2]string)
+
+	// Unlock all locks so that other connections can proceed
+	for i := len(unlocks) - 1; i >= 0; i-- {
+		unlocks[i]()
+	}
+
+	// Wait for a value
+	select {
+	case ch <- (chan<- [2]string)(recCh):
+		close(ch)
+		vals := <-recCh
+		return vals[:], nil
+	case <-timeoutCh:
+		close(ch)
+		return nil, nil
+	}
 }
 
 var lindex = cmd.NewSingleKeyCmd(
@@ -106,7 +190,11 @@ var lpop = cmd.NewDBCmd(
 	lpopFn)
 
 func lpopFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
-	k, unl := db.LockGetKey(args[0], srv.NoKeyDefaultVal)
+	// Since LPOP may delete the key (if the list is empty), must get an exclusive
+	// DB lock right away (can't think of a sane way to upgrade the lock without restartint
+	// the whole operation).
+	k, unl := db.XLockGetKey(args[0], srv.NoKeyDefaultVal)
+	defer unl()
 
 	// Lock the key
 	k.Lock()
@@ -119,16 +207,12 @@ func lpopFn(db srv.DB, args []string, ints []int64, floats []float64) (interface
 		if ok {
 			// If the list is now empty, delete the key
 			if v.LLen() == 0 {
-				// Will upgrade the db lock to an exclusive lock
-				unl = db.UpgradeLockDelKey(args[0])
+				db.DelKey(args[0])
 			}
-			unl()
 			return val, nil
 		}
-		unl()
 		return nil, nil
 	}
-	unl()
 	return nil, cmd.ErrInvalidValType
 }
 
@@ -203,7 +287,11 @@ var lrem = cmd.NewDBCmd(
 	lremFn)
 
 func lremFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
-	k, unl := db.LockGetKey(args[0], srv.NoKeyDefaultVal)
+	// Since LREM may delete the key (if the list is empty), must get an exclusive
+	// DB lock right away (can't think of a sane way to upgrade the lock without restartint
+	// the whole operation).
+	k, unl := db.XLockGetKey(args[0], srv.NoKeyDefaultVal)
+	defer unl()
 
 	// Lock the key
 	k.Lock()
@@ -216,14 +304,11 @@ func lremFn(db srv.DB, args []string, ints []int64, floats []float64) (interface
 		if val > 0 {
 			// If the list is now empty, delete the key
 			if v.LLen() == 0 {
-				// Will upgrade the db lock to an exclusive lock
-				unl = db.UpgradeLockDelKey(args[0])
+				db.DelKey(args[0])
 			}
 		}
-		unl()
 		return val, nil
 	}
-	unl()
 	return nil, cmd.ErrInvalidValType
 }
 
@@ -264,7 +349,11 @@ var ltrim = cmd.NewDBCmd(
 	ltrimFn)
 
 func ltrimFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
-	k, unl := db.LockGetKey(args[0], srv.NoKeyDefaultVal)
+	// Since LTRIM may delete the key (if the list is empty), must get an exclusive
+	// DB lock right away (can't think of a sane way to upgrade the lock without restartint
+	// the whole operation).
+	k, unl := db.XLockGetKey(args[0], srv.NoKeyDefaultVal)
+	defer unl()
 
 	// Lock the key
 	k.Lock()
@@ -276,13 +365,10 @@ func ltrimFn(db srv.DB, args []string, ints []int64, floats []float64) (interfac
 		v.LTrim(ints[0], ints[1])
 		// If the list is now empty, delete the key
 		if v.LLen() == 0 {
-			// Will upgrade the db lock to an exclusive lock
-			unl = db.UpgradeLockDelKey(args[0])
+			db.DelKey(args[0])
 		}
-		unl()
 		return cmd.OKVal, nil
 	}
-	unl()
 	return nil, cmd.ErrInvalidValType
 }
 
@@ -294,7 +380,11 @@ var rpop = cmd.NewDBCmd(
 	rpopFn)
 
 func rpopFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
-	k, unl := db.LockGetKey(args[0], srv.NoKeyDefaultVal)
+	// Since RPOP may delete the key (if the list is empty), must get an exclusive
+	// DB lock right away (can't think of a sane way to upgrade the lock without restartint
+	// the whole operation).
+	k, unl := db.XLockGetKey(args[0], srv.NoKeyDefaultVal)
+	defer unl()
 
 	// Lock the key
 	k.Lock()
@@ -307,16 +397,12 @@ func rpopFn(db srv.DB, args []string, ints []int64, floats []float64) (interface
 		if ok {
 			// If the list is now empty, delete the key
 			if v.LLen() == 0 {
-				// Will upgrade the db lock to an exclusive lock
-				unl = db.UpgradeLockDelKey(args[0])
+				db.DelKey(args[0])
 			}
-			unl()
 			return val, nil
 		}
-		unl()
 		return nil, nil
 	}
-	unl()
 	return nil, cmd.ErrInvalidValType
 }
 
@@ -328,20 +414,22 @@ var rpoplpush = cmd.NewDBCmd(
 	rpoplpushFn)
 
 func rpoplpushFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
-	db.RLock()
+	// Since RPOPLPUSH may delete the key (if the src list is empty), must get an exclusive
+	// DB lock right away (can't think of a sane way to upgrade the lock without restartint
+	// the whole operation).
+	db.Lock()
+	defer db.Unlock()
 
 	// Get the source key
 	keys := db.Keys()
 	src, ok := keys[args[0]]
 	if !ok {
 		// Source key does not exist, return nil
-		db.RUnlock()
 		return nil, nil
 	}
 
 	// If source exists, and source and destination are the same
 	if args[0] == args[1] {
-		defer db.RUnlock()
 		src.Lock()
 		defer src.Unlock()
 
@@ -360,55 +448,30 @@ func rpoplpushFn(db srv.DB, args []string, ints []int64, floats []float64) (inte
 		return nil, cmd.ErrInvalidValType
 	}
 
-	// Otherwise get the destination key, and create it if it doesn't exist
-	exclock := false
-	dst, ok := keys[args[1]]
-	def := db.RUnlock
-	if !ok {
-		// Destination does not exist, upgrade db lock
-		db.RUnlock()
-		db.Lock()
-		def = db.Unlock
-		exclock = true
-
-		keys = db.Keys()
-		// Re-read the source key, as it may have changed during db lock upgrade
-		src, ok = keys[args[0]]
-		if !ok {
-			// src does not exist anymore, return nil
-			def()
-			return nil, nil
-		}
-
-		// Exit early if the source key does not hold a List so that the dst
-		// is not created.
-		v := src.Val()
-		if _, ok = v.(vals.List); !ok {
-			def()
-			return nil, cmd.ErrInvalidValType
-		}
-
-		// Re-read the destination, as it may have changed during db lock upgrade
-		dst, ok = keys[args[1]]
-		if !ok {
-			// Create the destination key
-			dst = srv.NewKey(args[1], vals.NewList())
-			keys[args[1]] = dst
-		}
-	}
-	defer def()
-
-	// At this point, both src and dst exist and are separate keys
 	src.Lock()
 	defer src.Unlock()
+	// Exit early if the source key does not hold a List so that the dst
+	// is not created.
+	vs := src.Val()
+	vsrc, ok := vs.(vals.List)
+	if !ok {
+		return nil, cmd.ErrInvalidValType
+	}
+
+	// Otherwise get the destination key, and create it if it doesn't exist
+	dst, ok := keys[args[1]]
+	if !ok {
+		// Destination does not exist, create it
+		dst = srv.NewKey(args[1], vals.NewList())
+		keys[args[1]] = dst
+	}
+
 	dst.Lock()
 	defer dst.Unlock()
-
-	// Get the values, make sure both are Lists
-	vs, vd := src.Val(), dst.Val()
-	vsrc, oksrc := vs.(vals.List)
-	vdst, okdst := vd.(vals.List)
-	if !oksrc || !okdst {
+	// Get the dst value, make sure it is a List
+	vd := dst.Val()
+	vdst, ok := vd.(vals.List)
+	if !ok {
 		return nil, cmd.ErrInvalidValType
 	}
 
@@ -417,7 +480,7 @@ func rpoplpushFn(db srv.DB, args []string, ints []int64, floats []float64) (inte
 	if ok {
 		// Check if the src is now empty, if so delete the key
 		if vsrc.LLen() == 0 {
-			// TODO : Need to know if an upgrade is required...
+			db.DelKey(args[0])
 		}
 		vdst.LPush(val)
 		return val, nil

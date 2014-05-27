@@ -8,6 +8,8 @@ import (
 	"github.com/PuerkitoBio/gred/vals"
 )
 
+// NoKeyFlag indicates what the DB should do when a non-existing key
+// is requested.
 type NoKeyFlag int
 
 const (
@@ -21,6 +23,8 @@ const (
 	NoKeyCreateSortedSet
 )
 
+// DB represents a Database, and defines the methods required to manipulate
+// its keys.
 type DB interface {
 	RWLocker
 
@@ -38,19 +42,26 @@ type DB interface {
 	Type(string) string
 
 	Keys() map[string]Key
-	UpgradeLockDelKey(string) func()
+	DelKey(string)
 	LockGetKey(string, NoKeyFlag) (Key, func())
+	XLockGetKey(string, NoKeyFlag) (Key, func())
 }
 
+// Static check to make sure *db implements the DB interface.
 var _ DB = (*db)(nil)
 
+// db is the implementation of the DB interface.
 type db struct {
 	sync.RWMutex
 
-	ix   int
+	// the database index
+	ix int
+
+	// the keys held by the database
 	keys map[string]Key
 }
 
+// NewDB creates a new DB value, with the specified index.
 func NewDB(ix int) DB {
 	return &db{
 		ix:   ix,
@@ -175,31 +186,34 @@ func (d *db) Keys() map[string]Key {
 	return d.keys
 }
 
-// UpgradeLockDelKey upgrades the DB lock to an exclusive lock, and deletes
-// the specified key. It is assumed the caller has an exclusive lock for this
-// key. It returns the unlock method to call to release the DB lock.
-func (d *db) UpgradeLockDelKey(name string) func() {
-	// Upgrade the db lock. Since the key lock is maintained and exclusive,
-	// it cannot change during the db key upgrade.
-
-	// TODO : This doesn't work, this could lead to a deadlock if during the upgrade
-	// (between RUnlock and Lock), an exclusive operation is executed (i.e. a DEL on
-	// the locked key). The DB lock could be acquired, but would deadlock waiting on the
-	// key's lock.
-
-	d.RUnlock()
-	d.Lock()
+// DelKey deletes the specified key. It is assumed the caller has an exclusive lock
+// for both the DB and the key to delete.
+func (d *db) DelKey(name string) {
 	k, ok := d.keys[name]
 	if ok {
 		k.Abort()
 		delete(d.keys, name)
 	}
-	return d.Unlock
+}
+
+func (d *db) XLockGetKey(name string, flag NoKeyFlag) (Key, func()) {
+	return d.lockGetKey(true, name, flag)
 }
 
 func (d *db) LockGetKey(name string, flag NoKeyFlag) (Key, func()) {
-	d.RLock()
-	ret := d.RUnlock
+	return d.lockGetKey(false, name, flag)
+}
+
+func (d *db) lockGetKey(excl bool, name string, flag NoKeyFlag) (Key, func()) {
+	var ret func()
+
+	if excl {
+		d.Lock()
+		ret = d.Unlock
+	} else {
+		d.RLock()
+		ret = d.RUnlock
+	}
 	if k, ok := d.keys[name]; ok {
 		return k, ret
 	}
@@ -212,14 +226,16 @@ func (d *db) LockGetKey(name string, flag NoKeyFlag) (Key, func()) {
 		return defKey(name), ret
 	}
 
-	// Otherwise, upgrade lock
-	d.RUnlock()
-	d.Lock()
-	ret = d.Unlock
+	// Otherwise, upgrade lock if it wasn't already exclusive
+	if !excl {
+		d.RUnlock()
+		d.Lock()
+		ret = d.Unlock
 
-	// Check if key now exists (added during the lock upgrade)
-	if k, ok := d.keys[name]; ok {
-		return k, ret
+		// Check if key now exists (added during the lock upgrade)
+		if k, ok := d.keys[name]; ok {
+			return k, ret
+		}
 	}
 
 	// Still no chance, create as requested
@@ -232,7 +248,7 @@ func (d *db) LockGetKey(name string, flag NoKeyFlag) (Key, func()) {
 	case NoKeyCreateHash:
 		k = NewKey(name, vals.NewIncHash())
 	case NoKeyCreateList:
-		k = NewKey(name, vals.NewList())
+		k = NewKey(name, vals.NewBList(name))
 	case NoKeyCreateSet:
 		k = NewKey(name, vals.NewSet())
 	default:

@@ -113,7 +113,7 @@ The commands are listed by category, as it is on the [redis website][redis].
 | LSET             | √      | |
 | LTRIM            | √      | Removes the key once empty.            |
 | RPOP             | √      | Removes the key once empty.            |
-| RPOPLPUSH        | ≈      | Does not remove key if list is empty.  |
+| RPOPLPUSH        | √      | Removes the src key once empty.        |
 | RPUSH            | √      | |
 | RPUSHX           | √      | |
 

@@ -32,7 +32,11 @@ var hdel = cmd.NewDBCmd(
 	hdelFn)
 
 func hdelFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
-	k, unl := db.LockGetKey(args[0], srv.NoKeyDefaultVal)
+	// Since HDEL may delete the key (if the hash is empty), must get an exclusive
+	// DB lock right away (can't think of a sane way to upgrade the lock without restartint
+	// the whole operation).
+	k, unl := db.XLockGetKey(args[0], srv.NoKeyDefaultVal)
+	defer unl()
 
 	// Lock the key
 	k.Lock()
@@ -45,14 +49,11 @@ func hdelFn(db srv.DB, args []string, ints []int64, floats []float64) (interface
 		if ret > 0 {
 			// Is it now an empty hash?
 			if v.HLen() == 0 {
-				// Will upgrade the db lock to an exclusive lock
-				unl = db.UpgradeLockDelKey(args[0])
+				db.DelKey(args[0])
 			}
 		}
-		unl()
 		return ret, nil
 	}
-	unl()
 	return nil, cmd.ErrInvalidValType
 }
 

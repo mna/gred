@@ -2,24 +2,32 @@ package vals
 
 type BList interface {
 	List
-	WaitLPop(<-chan chan<- string)
-	WaitRPop(<-chan chan<- string)
+	WaitLPop(<-chan chan<- [2]string)
+	WaitRPop(<-chan chan<- [2]string)
 }
 
 var _ BList = (*blockList)(nil)
 
 type blockList struct {
 	List
-	chans []<-chan chan<- string
+	tag   string
+	chans []<-chan chan<- [2]string
 	isr   []bool
 }
 
-func (b *blockList) WaitLPop(ch <-chan chan<- string) {
+func NewBList(tag string) BList {
+	return &blockList{
+		List: NewList(),
+		tag:  tag,
+	}
+}
+
+func (b *blockList) WaitLPop(ch <-chan chan<- [2]string) {
 	b.chans = append(b.chans, ch)
 	b.isr = append(b.isr, false)
 }
 
-func (b *blockList) WaitRPop(ch <-chan chan<- string) {
+func (b *blockList) WaitRPop(ch <-chan chan<- [2]string) {
 	b.chans = append(b.chans, ch)
 	b.isr = append(b.isr, true)
 }
@@ -56,7 +64,7 @@ func (b *blockList) unblock() {
 			} else {
 				v, _ = b.LPop()
 			}
-			sendch <- v
+			sendch <- [2]string{b.tag, v}
 		}
 
 		// Continue with next waiting channel
