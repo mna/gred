@@ -43,10 +43,7 @@ func blpopFn(db srv.DB, args []string, ints []int64, floats []float64) (interfac
 	keys := db.Keys()
 	for _, nm := range args[:len(args)-1] { // last arg is the timeout
 		k, ok := keys[nm]
-		// Ignore non-existing keys
-		// TODO : Redis does not ignore non-existing keys, it actually listens for
-		// pushes on those keys, although they are not created (exists = 0) while
-		// waiting.
+		// Ignore non-existing keys in non-blocking portion
 		if ok {
 			// Lock the key
 			k.Lock()
@@ -57,18 +54,23 @@ func blpopFn(db srv.DB, args []string, ints []int64, floats []float64) (interfac
 			if v, ok := v.(vals.List); ok {
 				val, ok := v.LPop()
 				if ok {
+					// Delete the key if there are no more values
 					if v.LLen() == 0 {
 						db.DelKey(k.Name())
 					}
+
+					// Unlock all keys in reverse order, and return
 					for i := len(unlocks) - 1; i >= 0; i-- {
 						unlocks[i]()
 					}
-					return val, nil
+					return []string{k.Name(), val}, nil
 				}
 			} else {
+				// Unlock all keys in reverse order
 				for i := len(unlocks) - 1; i >= 0; i-- {
 					unlocks[i]()
 				}
+				// Return invalid type error
 				return nil, cmd.ErrInvalidValType
 			}
 		}
@@ -78,11 +80,7 @@ func blpopFn(db srv.DB, args []string, ints []int64, floats []float64) (interfac
 	// the waiting workflow.
 	ch := make(chan chan<- [2]string)
 	for _, nm := range args[:len(args)-1] {
-		k, ok := keys[nm]
-		if ok {
-			v := k.Val().(vals.BList)
-			v.WaitLPop(ch)
-		}
+		db.WaitLPop(nm, ch)
 	}
 
 	// Prepare channels (timeout and receive values)
@@ -216,21 +214,32 @@ func lpopFn(db srv.DB, args []string, ints []int64, floats []float64) (interface
 	return nil, cmd.ErrInvalidValType
 }
 
-var lpush = cmd.NewSingleKeyCmd(
+var lpush = cmd.NewDBCmd(
 	&cmd.ArgDef{
 		MinArgs: 2,
 		MaxArgs: -1,
 	},
-	srv.NoKeyCreateList,
 	lpushFn)
 
-func lpushFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
+func lpushFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
+	// DB must be exclusively locked, because of the unblock behaviour.
+	k, unl := db.XLockGetKey(args[0], srv.NoKeyCreateList)
+	defer unl()
+
 	k.Lock()
 	defer k.Unlock()
 
 	v := k.Val()
 	if v, ok := v.(vals.List); ok {
-		return v.LPush(args[1:]...), nil
+		val := v.LPush(args[1:]...)
+		// Unblock any waiters on this key
+		if unblock(db, k, v) > 0 {
+			// If the list is now empty, delete the key
+			if v.LLen() == 0 {
+				db.DelKey(args[0])
+			}
+		}
+		return val, nil
 	}
 	return nil, cmd.ErrInvalidValType
 }

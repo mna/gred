@@ -57,7 +57,7 @@ type DB interface {
 	RWLocker
 
 	// DB-level commands
-	Del(...string) int
+	Del(...string) int64
 	Exists(string) bool
 	Expire(string, int64, func()) bool
 	ExpireAt(string, int64, func()) bool
@@ -79,6 +79,7 @@ type DB interface {
 	// Blocking list waiters
 	WaitLPop(string, WaitChan)
 	WaitRPop(string, WaitChan)
+	NextWaiter(string) (WaitChan, bool)
 }
 
 // Static check to make sure *db implements the DB interface.
@@ -117,6 +118,19 @@ func (d *db) WaitRPop(key string, ch WaitChan) {
 	d.waitPop(key, ch, true)
 }
 
+func (d *db) NextWaiter(key string) (WaitChan, bool) {
+	slch, slbl := d.waitersChans[key], d.waitersPopPos[key]
+	if len(slch) == 0 {
+		return nil, false
+	}
+	ch, bl := slch[0], slbl[0]
+	slch, slbl = slch[1:], slbl[1:]
+	d.waitersChans[key] = slch
+	d.waitersPopPos[key] = slbl
+
+	return ch, bl
+}
+
 func (d *db) waitPop(key string, ch WaitChan, rpop bool) {
 	slch := d.waitersChans[key]
 	slch = append(slch, ch)
@@ -126,8 +140,8 @@ func (d *db) waitPop(key string, ch WaitChan, rpop bool) {
 	d.waitersPopPos[key] = slbl
 }
 
-func (d *db) Del(names ...string) int {
-	var cnt int
+func (d *db) Del(names ...string) int64 {
+	var cnt int64
 	for _, nm := range names {
 		if k, ok := d.keys[nm]; ok {
 			k.Lock()
