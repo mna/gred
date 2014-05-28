@@ -222,7 +222,8 @@ var lpush = cmd.NewDBCmd(
 	lpushFn)
 
 func lpushFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
-	// DB must be exclusively locked, because of the unblock behaviour.
+	// DB must be exclusively locked, because of the unblock behaviour, which
+	// may result in a delete of the key.
 	k, unl := db.XLockGetKey(args[0], srv.NoKeyCreateList)
 	defer unl()
 
@@ -252,6 +253,8 @@ var lpushx = cmd.NewSingleKeyCmd(
 	srv.NoKeyNone,
 	lpushxFn)
 
+// LPUSHX can't have any waiters, because it only pushes if the key already
+// exists, and the key is removed if it doesn't have any value.
 func lpushxFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
 	if k == nil {
 		return int64(0), nil
@@ -492,26 +495,45 @@ func rpoplpushFn(db srv.DB, args []string, ints []int64, floats []float64) (inte
 			db.DelKey(args[0])
 		}
 		vdst.LPush(val)
+		// Unblock any waiters on the dst key
+		if unblock(db, dst, vdst) > 0 {
+			// If the list is now empty, delete the key
+			if vdst.LLen() == 0 {
+				db.DelKey(args[1])
+			}
+		}
 		return val, nil
 	}
 	return nil, nil
 }
 
-var rpush = cmd.NewSingleKeyCmd(
+var rpush = cmd.NewDBCmd(
 	&cmd.ArgDef{
 		MinArgs: 2,
 		MaxArgs: -1,
 	},
-	srv.NoKeyCreateList,
 	rpushFn)
 
-func rpushFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
+func rpushFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
+	// DB must be exclusively locked, because of the unblock behaviour, which
+	// may result in a delete of the key.
+	k, unl := db.XLockGetKey(args[0], srv.NoKeyCreateList)
+	defer unl()
+
 	k.Lock()
 	defer k.Unlock()
 
 	v := k.Val()
 	if v, ok := v.(vals.List); ok {
-		return v.RPush(args[1:]...), nil
+		val := v.RPush(args[1:]...)
+		// Unblock any waiters on this key
+		if unblock(db, k, v) > 0 {
+			// If the list is now empty, delete the key
+			if v.LLen() == 0 {
+				db.DelKey(args[0])
+			}
+		}
+		return val, nil
 	}
 	return nil, cmd.ErrInvalidValType
 }
@@ -524,6 +546,8 @@ var rpushx = cmd.NewSingleKeyCmd(
 	srv.NoKeyNone,
 	rpushxFn)
 
+// RPUSHX can't have any waiters, because it only pushes if the key already
+// exists, and the key is removed if it doesn't have any value.
 func rpushxFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
 	if k == nil {
 		return int64(0), nil
