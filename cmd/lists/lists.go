@@ -2,7 +2,6 @@ package lists
 
 import (
 	"strings"
-	"time"
 
 	"github.com/PuerkitoBio/gred/cmd"
 	"github.com/PuerkitoBio/gred/srv"
@@ -11,6 +10,7 @@ import (
 
 func init() {
 	cmd.Register("blpop", blpop)
+	cmd.Register("brpop", brpop)
 	cmd.Register("lindex", lindex)
 	cmd.Register("linsert", linsert)
 	cmd.Register("llen", llen)
@@ -36,75 +36,19 @@ var blpop = cmd.NewDBCmd(
 	blpopFn)
 
 func blpopFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
-	db.Lock()
-	unlocks := make([]func(), 0)
-	unlocks = append(unlocks, db.Unlock)
+	return blockPop(db, ints[0], false, args[:len(args)-1]...)
+}
 
-	keys := db.Keys()
-	for _, nm := range args[:len(args)-1] { // last arg is the timeout
-		k, ok := keys[nm]
-		// Ignore non-existing keys in non-blocking portion
-		if ok {
-			// Lock the key
-			k.Lock()
-			unlocks = append(unlocks, k.Unlock)
+var brpop = cmd.NewDBCmd(
+	&cmd.ArgDef{
+		MinArgs:    2,
+		MaxArgs:    -1,
+		IntIndices: []int{-1},
+	},
+	brpopFn)
 
-			// Get the value, if possible
-			v := k.Val()
-			if v, ok := v.(vals.List); ok {
-				val, ok := v.LPop()
-				if ok {
-					// Delete the key if there are no more values
-					if v.LLen() == 0 {
-						db.DelKey(k.Name())
-					}
-
-					// Unlock all keys in reverse order, and return
-					for i := len(unlocks) - 1; i >= 0; i-- {
-						unlocks[i]()
-					}
-					return []string{k.Name(), val}, nil
-				}
-			} else {
-				// Unlock all keys in reverse order
-				for i := len(unlocks) - 1; i >= 0; i-- {
-					unlocks[i]()
-				}
-				// Return invalid type error
-				return nil, cmd.ErrInvalidValType
-			}
-		}
-	}
-
-	// If no value was readily available, now all keys are locked, enter
-	// the waiting workflow.
-	ch := make(chan chan<- [2]string)
-	for _, nm := range args[:len(args)-1] {
-		db.WaitLPop(nm, ch)
-	}
-
-	// Prepare channels (timeout and receive values)
-	var timeoutCh <-chan time.Time
-	if ints[0] > 0 {
-		timeoutCh = time.After(time.Duration(ints[0]) * time.Second)
-	}
-	recCh := make(chan [2]string)
-
-	// Unlock all locks so that other connections can proceed
-	for i := len(unlocks) - 1; i >= 0; i-- {
-		unlocks[i]()
-	}
-
-	// Wait for a value
-	select {
-	case ch <- (chan<- [2]string)(recCh):
-		close(ch)
-		vals := <-recCh
-		return vals[:], nil
-	case <-timeoutCh:
-		close(ch)
-		return nil, nil
-	}
+func brpopFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
+	return blockPop(db, ints[0], true, args[:len(args)-1]...)
 }
 
 var lindex = cmd.NewSingleKeyCmd(

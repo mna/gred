@@ -99,8 +99,8 @@ The commands are listed by category, as it is on the [redis website][redis].
 
 | Command          | Status | Comment                                |
 | ---------------- | :----: | -------------------------------------- |
-| BLPOP            | ø      | |
-| BRPOP            | ø      | |
+| BLPOP            | √      | |
+| BRPOP            | √      | |
 | BRPOPLPUSH       | ø      | |
 | LINDEX           | √      | |
 | LINSERT          | √      | |
