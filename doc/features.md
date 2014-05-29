@@ -7,7 +7,7 @@ Legend: `√` means fully supported, `ø` means not supported, and `≈` means p
 This is a *tl;dr;* version of the 2.8 Redis-compatibility status of the project.
 
 * `redis-cli` and RESP-based clients compatibility: √
-* Pipelining: ≈ (to be tested)
+* Pipelining: ø
 * Telnet: ø
 * Clustering, sharding, partitioning, replication, twemproxy support: ø
 * Signal handling: ø

@@ -17,9 +17,10 @@ var (
 	defdb = srv.NewDB(0)
 )
 
+// Conn defines the methods required to handle a connection to the
+// server.
 type Conn interface {
 	io.ReadWriter
-
 	Handle() error
 }
 
