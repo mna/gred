@@ -11,6 +11,7 @@ import (
 func init() {
 	cmd.Register("blpop", blpop)
 	cmd.Register("brpop", brpop)
+	cmd.Register("brpoplpush", brpoplpush)
 	cmd.Register("lindex", lindex)
 	cmd.Register("linsert", linsert)
 	cmd.Register("llen", llen)
@@ -49,6 +50,32 @@ var brpop = cmd.NewDBCmd(
 
 func brpopFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
 	return blockPop(db, ints[0], true, args[:len(args)-1]...)
+}
+
+var brpoplpush = cmd.NewDBCmd(
+	&cmd.ArgDef{
+		MinArgs:    3,
+		MaxArgs:    3,
+		IntIndices: []int{2},
+	},
+	brpoplpushFn)
+
+func brpoplpushFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
+	// First do the brpop part
+	vals, err := blockPop(db, ints[0], true, args[0])
+	if vals == nil {
+		// Return either an error, or the nil timeout value
+		return vals, err
+	}
+
+	// Then proceed with lpush
+	_, err = lpushFn(db, []string{args[1], vals[1]}, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return the value popped and pushed
+	return vals[1], nil
 }
 
 var lindex = cmd.NewSingleKeyCmd(

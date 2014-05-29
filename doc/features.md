@@ -22,6 +22,8 @@ This section lists the implemented commands.
 
 The commands are listed by category, as it is on the [redis website][redis].
 
+**TODO** : Must set zero value to elements of a slice before slicing them out (i.e. before `sl = sl[1:]`). Will leak memory otherwise.
+
 ### Keys
 
 | Command          | Status | Comment                                |
@@ -99,9 +101,9 @@ The commands are listed by category, as it is on the [redis website][redis].
 
 | Command          | Status | Comment                                |
 | ---------------- | :----: | -------------------------------------- |
-| BLPOP            | √      | |
-| BRPOP            | √      | |
-| BRPOPLPUSH       | ø      | |
+| BLPOP            | √      | Removes the key once empty.            |
+| BRPOP            | √      | Removes the key once empty.            |
+| BRPOPLPUSH       | √      | Removes the key once empty.            |
 | LINDEX           | √      | |
 | LINSERT          | √      | |
 | LLEN             | √      | |

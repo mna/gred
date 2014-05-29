@@ -40,7 +40,7 @@ func unblock(db srv.DB, k srv.Key, v vals.List) int {
 	return cnt
 }
 
-func blockPop(db srv.DB, secs int64, rpop bool, lists ...string) (interface{}, error) {
+func blockPop(db srv.DB, secs int64, rpop bool, lists ...string) ([]string, error) {
 	db.Lock()
 	unlocks := make([]func(), 0)
 	unlocks = append(unlocks, db.Unlock)
