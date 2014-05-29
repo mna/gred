@@ -53,6 +53,13 @@ value is an array of arguments to pass to the command.
 Array values on the top-level array hold the same kind of object values,
 each representing a command to execute, but those commands are pipelined.
 
+Special placeholders %d and %q can be used in the string arguments. Those
+placeholders have the following meaning:
+
+    %c : replaced with the client id.
+    %u : replaced with a random UUID, newly generated on each execution of the command.
+    %d : a random integer.
+
 Results
 
 Each client stores the replies from the server, and since commands and clients
