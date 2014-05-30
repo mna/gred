@@ -7,7 +7,7 @@ import (
 )
 
 func init() {
-	cmd.Register("append", append_)
+	cmd.Register("append", appendƒ)
 	cmd.Register("decr", decr)
 	cmd.Register("decrby", decrby)
 	cmd.Register("get", get)
@@ -22,7 +22,7 @@ func init() {
 	cmd.Register("strlen", strlen)
 }
 
-var append_ = cmd.NewSingleKeyCmd(
+var appendƒ = cmd.NewSingleKeyCmd(
 	&cmd.ArgDef{
 		MinArgs: 2,
 		MaxArgs: 2,
