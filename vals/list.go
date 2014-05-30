@@ -1,5 +1,6 @@
 package vals
 
+// List defines the methods required to implement a List.
 type List interface {
 	Value
 
@@ -17,21 +18,28 @@ type List interface {
 	RPush(...string) int64
 }
 
+// initListCap is the initial capacity of the list.
 const initListCap int = 10
 
+// Static type check to validate that *list implements List.
 var _ List = (*list)(nil)
 
+// list is the internal type that implements List.
 type list []string
 
+// NewList creates a new List.
 func NewList() List {
 	l := make(list, 0, initListCap)
 	return &l
 }
 
+// Type returns the type of this value, which is "list".
 func (l list) Type() string {
 	return "list"
 }
 
+// LIndex returns the value at index ix. It returns false as second
+// return value if index is out of bounds.
 func (l *list) LIndex(ix int64) (string, bool) {
 	ln := int64(len(*l))
 	if ix < 0 {
@@ -43,6 +51,8 @@ func (l *list) LIndex(ix int64) (string, bool) {
 	return "", false
 }
 
+// LInsertBefore inserts val in the list before the pivot value. It returns
+// the new length of the list, or -1 if the pivot value was not found.
 func (l *list) LInsertBefore(pivot, val string) int64 {
 	for i := 0; i < len(*l); i++ {
 		if (*l)[i] == pivot {
@@ -58,6 +68,8 @@ func (l *list) LInsertBefore(pivot, val string) int64 {
 	return -1
 }
 
+// LInsertAfter inserts val in the list after the pivot value. It returns
+// the new length of the list, or -1 if the pivot value was not found.
 func (l *list) LInsertAfter(pivot, val string) int64 {
 	for i := 0; i < len(*l); i++ {
 		if (*l)[i] == pivot {
@@ -73,10 +85,13 @@ func (l *list) LInsertAfter(pivot, val string) int64 {
 	return -1
 }
 
+// LLen returns the length of the list.
 func (l *list) LLen() int64 {
 	return int64(len(*l))
 }
 
+// LPop pops a value from the head of the list and returns it. It returns false
+// as second value if it could not return a value.
 func (l *list) LPop() (string, bool) {
 	if len(*l) == 0 {
 		return "", false
@@ -87,6 +102,8 @@ func (l *list) LPop() (string, bool) {
 	return val, true
 }
 
+// LPush pushes the provided values on the head of the list. It returns the new
+// length of the list.
 func (l *list) LPush(vals ...string) int64 {
 	// Reverse vals, then append
 	for i, j := 0, len(vals)-1; i < j; i, j = i+1, j-1 {
@@ -96,6 +113,7 @@ func (l *list) LPush(vals ...string) int64 {
 	return int64(len(*l))
 }
 
+// LRange returns the values in the list between start and stop.
 func (l *list) LRange(start, stop int64) []string {
 	start, stop = l.normalizeStartStop(start, stop)
 	if stop-start < 0 {
@@ -104,6 +122,10 @@ func (l *list) LRange(start, stop int64) []string {
 	return (*l)[start : stop+1]
 }
 
+// LRem removes up to cnt occurrences of val from the list. If cnt is
+// negative, it starts from the tail of the list. If cnt is 0, all
+// occurrences of val are removed. It returns the number of occurrences
+// that were removed.
 func (l *list) LRem(cnt int64, val string) int64 {
 	var n int64
 	ln := len(*l)
@@ -141,6 +163,8 @@ func (l *list) del(ix int) {
 	*l = (*l)[:len(*l)-1]
 }
 
+// LSet sets the value at index ix to val. It returns false if the index
+// is out of bounds.
 func (l *list) LSet(ix int64, val string) bool {
 	ln := int64(len(*l))
 	if ix < 0 {
@@ -164,6 +188,8 @@ func (l *list) LTrim(start, stop int64) {
 	*l = (*l)[start : stop+1]
 }
 
+// RPop pops a value from the tail of the list and returns it. It returns false
+// as second value if it could not return a value.
 func (l *list) RPop() (string, bool) {
 	if len(*l) == 0 {
 		return "", false
@@ -174,6 +200,8 @@ func (l *list) RPop() (string, bool) {
 	return val, true
 }
 
+// RPush pushes the provided values on the tail of the list. It returns the new
+// length of the list.
 func (l *list) RPush(vals ...string) int64 {
 	*l = append(*l, vals...)
 	return int64(len(*l))
