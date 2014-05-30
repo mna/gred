@@ -85,3 +85,102 @@ on completion:
   errors: <number of errors received from the server>
 */
 package main
+
+import (
+	"flag"
+	"fmt"
+	"os"
+	"sync"
+	"time"
+)
+
+var (
+	concurrent = flag.Int("c", 1, "number of concurrent clients")
+	iterations = flag.Int("n", 1, "number of iterations over the command files")
+	timeout    = flag.Duration("t", 0, "timeout or duration of the execution")
+	output     = flag.String("o", "", "output file to log server replies")
+)
+
+var usage = `Usage: dreadis [options...] FILES...
+
+Options:
+  -c  Number of concurrent clients to run. Defaults to 1.
+  -n  Number of iterations over the command files. Defaults 
+      to 1. If set to 0 and -t is specified, will iterate over
+      command files until the -t duration is reached.
+  -o  Output file to log server replies. By default, replies
+      are discarded.
+  -t  Maximum duration of the execution if -n is > 0, or
+      duration of the execution if -n is set to 0.
+
+`
+
+func main() {
+	// Parse and validate args
+	flag.Usage = func() {
+		fmt.Fprint(os.Stderr, usage)
+	}
+	flag.Parse()
+	if flag.NArg() < 1 {
+		printUsage("", 1)
+	}
+	if *concurrent < 1 {
+		*concurrent = 1
+	}
+
+	// Load command files
+	files, err := loadJSONFiles(flag.Args())
+	if err != nil {
+		fmt.Fprint(os.Stderr, err)
+	}
+
+	// Launch workers, dispatching the command files
+	start, stop := make(chan struct{}), make(chan struct{})
+	wg := sync.WaitGroup{}
+	ws := launchWorkers(args{
+		c:     *concurrent,
+		n:     *iterations,
+		wg:    &wg,
+		start: start,
+		stop:  stop,
+		files: files})
+
+	// Start the workers
+	begin := time.Now()
+	close(start)
+
+	// Stop processing after the timeout duration
+	if *timeout > 0 {
+		go func() {
+			<-time.After(*timeout)
+			close(stop)
+		}()
+	}
+
+	// Wait for workers
+	wg.Wait()
+	end := time.Now()
+
+	// Process results, compute hash
+	h, cmds, errs := processResults(wg)
+
+	// Display the results
+	fmt.Printf(`
+sha256:     %s
+clients:    %d
+iterations: %d
+duration:   %s
+commands:   %d
+errors:     %d
+`, h, *concurrent, *iterations, end.Sub(begin), cmds, errs)
+
+}
+
+func printUsage(msg string, exitCode int) {
+	if msg != "" {
+		fmt.Fprintln(os.Stderr, msg)
+		fmt.Fprintln(os.Stderr, "")
+	}
+	flag.Usage()
+	os.Exit(exitCode)
+}
