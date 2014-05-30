@@ -6,6 +6,14 @@ import (
 	"github.com/PuerkitoBio/gred/vals"
 )
 
+// RWLocker defines the methods required to implement a multi-reader,
+// single-writer lock.
+type RWLocker interface {
+	sync.Locker
+	RLock()
+	RUnlock()
+}
+
 // Key defines the methods required to implement a database Key.
 type Key interface {
 	// Read-Write locker
