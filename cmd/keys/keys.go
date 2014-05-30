@@ -17,7 +17,7 @@ func init() {
 	cmd.Register("pttl", pttl)
 	cmd.Register("setex", setex)
 	cmd.Register("ttl", ttl)
-	cmd.Register("type", type_)
+	cmd.Register("type", typeƒ)
 }
 
 var del = cmd.NewDBCmd(
@@ -184,7 +184,7 @@ func ttlFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{
 	return db.TTL(args[0]), nil
 }
 
-var type_ = cmd.NewDBCmd(
+var typeƒ = cmd.NewDBCmd(
 	&cmd.ArgDef{
 		MinArgs: 1,
 		MaxArgs: 1,
