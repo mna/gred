@@ -43,6 +43,9 @@ var (
 	// ErrOutOfRange is returned when an argument is out of range.
 	ErrOutOfRange = errors.New("ERR index out of range")
 
+	// ErrOfsOutOfRange is returned when an offset argument is out of range.
+	ErrOfsOutOfRange = errors.New("ERR offset is out of range")
+
 	// ErrHashFieldNotInt is returned when an increment operation is attempted on
 	// a hash field that does not contain an integer value.
 	ErrHashFieldNotInt = errors.New("ERR hash value is not an integer")
@@ -110,8 +113,10 @@ type DBCmd interface {
 	ExecWithDB(srv.DB, []string, []int64, []float64) (interface{}, error)
 }
 
+// ArgFn defines the function signature required for the argument validation function.
 type ArgFn func([]string, []int64, []float64) error
 
+// ArgDef holds the argument definition for a command.
 type ArgDef struct {
 	FloatIndices     []int
 	IntIndices       []int

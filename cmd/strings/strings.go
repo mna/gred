@@ -18,6 +18,7 @@ func init() {
 	cmd.Register("incrby", incrby)
 	cmd.Register("incrbyfloat", incrbyfloat)
 	cmd.Register("set", set)
+	cmd.Register("setrange", setrange)
 	cmd.Register("strlen", strlen)
 }
 
@@ -239,6 +240,32 @@ func setFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{
 		k.Abort()
 		v.Set(args[1])
 		return cmd.OKVal, nil
+	}
+	return nil, cmd.ErrInvalidValType
+}
+
+var setrange = cmd.NewSingleKeyCmd(
+	&cmd.ArgDef{
+		MinArgs:    3,
+		MaxArgs:    3,
+		IntIndices: []int{1},
+		ValidateFn: func(args []string, ints []int64, floats []float64) error {
+			if ints[0] < 0 {
+				return cmd.ErrOfsOutOfRange
+			}
+			return nil
+		},
+	},
+	srv.NoKeyDefaultVal,
+	setrangeFn)
+
+func setrangeFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
+	k.Lock()
+	defer k.Unlock()
+
+	v := k.Val()
+	if v, ok := v.(vals.String); ok {
+		return v.SetRange(ints[0], args[2]), nil
 	}
 	return nil, cmd.ErrInvalidValType
 }

@@ -17,7 +17,8 @@ An example command-line usage is:
 dreadis supports the following flags:
 
   -c : number of concurrent client connections, defaults to 1.
-  -n : number of iterations over the commands in the source files, defaults to 1.
+  -n : number of iterations over the commands in the source files, defaults to 0, which
+       means run each command once, or until -t is reached, if a timeout is set.
   -t : duration of the test, defaults to the time required for 1 iteration over the files.
   -o : output file to log the replies, defaults to a temporary file, removed on exit.
 
@@ -100,7 +101,7 @@ import (
 
 var (
 	concurrent = flag.Int("c", 1, "number of concurrent clients")
-	iterations = flag.Int("n", 1, "number of iterations over the command files")
+	iterations = flag.Int("n", 0, "number of iterations over the command files")
 	timeout    = flag.Duration("t", 0, "timeout or duration of the execution")
 	output     = flag.String("o", "", "output file to log server replies")
 
@@ -112,9 +113,9 @@ var usage = `Usage: dreadis [options...] FILES...
 
 Options:
   -c  Number of concurrent clients to run. Defaults to 1.
-  -n  Number of iterations over the command files. Defaults 
-      to 1. If set to 0 and -t is specified, will iterate over
-      command files until the -t duration is reached.
+  -n  Number of iterations over the command files. Defaults
+      to 0, which behaves like -n=1 unless -t is set, in which
+      case it will execute the commands until -t is reached.
   -o  Output file to log server replies. By default, replies
       are discarded.
   -t  Maximum duration of the execution if -n is > 0, or
@@ -138,6 +139,10 @@ func main() {
 	}
 	if *concurrent < 1 {
 		*concurrent = 1
+	}
+	// -n = 1 if no timeout is set.
+	if *timeout == 0 && *iterations == 0 {
+		*iterations = 1
 	}
 
 	// Load command files

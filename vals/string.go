@@ -8,6 +8,7 @@ type String interface {
 	GetRange(int64, int64) string
 	GetSet(string) string
 	Set(string)
+	SetRange(int64, string) int64
 	StrLen() int64
 }
 
@@ -62,6 +63,26 @@ func (s *stringval) GetSet(v string) string {
 
 func (s *stringval) Set(v string) {
 	*s = stringval(v)
+}
+
+func (s *stringval) SetRange(ofs int64, v string) int64 {
+	// Fast path if there's no value to set
+	if len(v) == 0 {
+		return int64(len(*s))
+	}
+
+	// Pad with 0 bytes if required
+	pad := int(ofs) + len(v) - len(*s)
+	b := []byte(*s)
+	if pad > 0 {
+		b = append(b, make([]byte, pad)...)
+	}
+
+	// Set the new value in place
+	copy(b[ofs:], v)
+	*s = stringval(b)
+
+	return int64(len(*s))
 }
 
 func (s *stringval) StrLen() int64 {

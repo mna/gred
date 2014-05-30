@@ -70,9 +70,9 @@ func (cmd command) run(id int, c redis.Conn, w io.Writer) (int, int) {
 
 	// Log the results
 	if bres, ok := res.([]byte); ok {
-		w.Write([]byte(fmt.Sprintf("%d: %s %v | %#v | %#v [%s]\n", id, cmd.name, args, string(bres), err, end.Sub(begin))))
+		w.Write([]byte(fmt.Sprintf("%d [%s]: %s %v | %#v | %#v\n", id, end.Sub(begin), cmd.name, args, string(bres), err)))
 	} else {
-		w.Write([]byte(fmt.Sprintf("%d: %s %v | %#v | %#v [%s]\n", id, cmd.name, args, res, err, end.Sub(begin))))
+		w.Write([]byte(fmt.Sprintf("%d [%s]: %s %v | %#v | %#v\n", id, end.Sub(begin), cmd.name, args, res, err)))
 	}
 
 	// Return the number of commands executed, and the number of errors

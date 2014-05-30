@@ -13,6 +13,7 @@ This is a *tl;dr;* version of the 2.8 Redis-compatibility status of the project.
 * Signal handling: ø
 * Persistence: ø
 * Configuration: ø
+* Limits checks (like 512Mb values limit, and offset/indices args): ø
 
 The commands support is detailed in the next section.
 
@@ -75,7 +76,7 @@ The commands are listed by category, as it is on the [redis website][redis].
 | SETBIT           | ø      |                                        |
 | SETEX            | ø      |                                        |
 | SETNX            | ø      |                                        |
-| SETRANGE         | ø      |                                        |
+| SETRANGE         | √      |                                        |
 | STRLEN           | √      |                                        |
 
 ### Hashes

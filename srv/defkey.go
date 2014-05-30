@@ -36,12 +36,13 @@ type defVal struct{}
 func (d defVal) Type() string { panic("Type called on defKey value") }
 
 // String implementation
-func (d defVal) Append(_ string) int64      { return 0 }
-func (d defVal) Get() string                { return "" }
-func (d defVal) GetRange(_, _ int64) string { return "" }
-func (d defVal) GetSet(_ string) string     { return "" }
-func (d defVal) Set(_ string)               {}
-func (d defVal) StrLen() int64              { return 0 }
+func (d defVal) Append(_ string) int64            { return 0 }
+func (d defVal) Get() string                      { return "" }
+func (d defVal) GetRange(_, _ int64) string       { return "" }
+func (d defVal) GetSet(_ string) string           { return "" }
+func (d defVal) Set(_ string)                     {}
+func (d defVal) SetRange(_ int64, _ string) int64 { return 0 }
+func (d defVal) StrLen() int64                    { return 0 }
 
 // Hashes implementation
 func (d defVal) HDel(_ ...string) int64               { return 0 }
