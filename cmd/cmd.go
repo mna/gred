@@ -98,11 +98,14 @@ func NewSrvCmd(arg *ArgDef, fn SrvFn) SrvCmd {
 	}
 }
 
+// srvCmd implements a server command, which is a type of command that doesn't
+// act on a specific DB or Key.
 type srvCmd struct {
 	*ArgDef
 	fn SrvFn
 }
 
+// Exec executes the server command with the provided arguments.
 func (s *srvCmd) Exec(args []string, ints []int64, floats []float64) (interface{}, error) {
 	return s.fn(args, ints, floats)
 }
@@ -118,12 +121,25 @@ type ArgFn func([]string, []int64, []float64) error
 
 // ArgDef holds the argument definition for a command.
 type ArgDef struct {
-	FloatIndices     []int
-	IntIndices       []int
+	// Indices of arguments to parse as floats.
+	FloatIndices []int
+
+	// Indices of arguments to parse as integers.
+	IntIndices []int
+
+	// Min and Max number of arguments. -1 can be specified for
+	// unbounded (variadic) maximum number of arguments.
 	MinArgs, MaxArgs int
-	ValidateFn       ArgFn
+
+	// ValidateFn is a function that is called (if set) to provide custom
+	// argument validation. It is called after the parsing of arguments as
+	// floats and integers, if applicable.
+	ValidateFn ArgFn
 }
 
+// Parse parses the provided list of arguments according to the argument
+// definition specs. It returns the list of arguments, the parsed integers,
+// the parsed floats, and an error if the arguments are invalid.
 func (a *ArgDef) Parse(name string, args []string) ([]string, []int64, []float64, error) {
 	l := len(args)
 	if l < a.MinArgs || (l > a.MaxArgs && a.MaxArgs >= 0) {
@@ -167,10 +183,14 @@ func (a *ArgDef) Parse(name string, args []string) ([]string, []int64, []float64
 	return args, ints, floats, nil
 }
 
+// Static type check that *singleKeyCmd implements the DBCmd interface.
 var _ DBCmd = (*singleKeyCmd)(nil)
 
+// KeyFn defines the function signature required for a Key command function.
 type KeyFn func(srv.Key, []string, []int64, []float64) (interface{}, error)
 
+// NewSingleKeyCmd creates a DBCmd that acts on a single key. The noKeyFlag
+// argument specifies what the command should do if the key does not exist.
 func NewSingleKeyCmd(arg *ArgDef, noKeyFlag srv.NoKeyFlag, fn KeyFn) DBCmd {
 	return &singleKeyCmd{
 		ArgDef: arg,
@@ -179,12 +199,14 @@ func NewSingleKeyCmd(arg *ArgDef, noKeyFlag srv.NoKeyFlag, fn KeyFn) DBCmd {
 	}
 }
 
+// singleKeyCmd implements DBCmd for commands that act on a single key.
 type singleKeyCmd struct {
 	*ArgDef
 	noKey srv.NoKeyFlag
 	fn    KeyFn
 }
 
+// ExecWithDB executes the command with the provided database and arguments.
 func (c *singleKeyCmd) ExecWithDB(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
 	k, def := db.LockGetKey(args[0], c.noKey)
 	defer def()
@@ -192,10 +214,13 @@ func (c *singleKeyCmd) ExecWithDB(db srv.DB, args []string, ints []int64, floats
 	return c.fn(k, args, ints, floats)
 }
 
+// Static type check to validate that *dbCmd implements DBCmd.
 var _ DBCmd = (*dbCmd)(nil)
 
+// DBFn defines the function signature required for DB command functions.
 type DBFn func(srv.DB, []string, []int64, []float64) (interface{}, error)
 
+// NewDBCmd creates a new command that acts on a database.
 func NewDBCmd(arg *ArgDef, fn DBFn) DBCmd {
 	return &dbCmd{
 		ArgDef: arg,
@@ -203,11 +228,13 @@ func NewDBCmd(arg *ArgDef, fn DBFn) DBCmd {
 	}
 }
 
+// dbCmd implements a DBCmd that acts on a database.
 type dbCmd struct {
 	*ArgDef
 	fn DBFn
 }
 
+// ExecWithDB executes the command with the specified database and arguments.
 func (d *dbCmd) ExecWithDB(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
 	return d.fn(db, args, ints, floats)
 }
