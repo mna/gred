@@ -8,12 +8,12 @@ import (
 
 var (
 	// Common encoding values optimized to avoid allocations.
-	pong   = []byte("+PONG\r\n")
-	ok     = []byte("+OK\r\n")
-	true_  = []byte(":1\r\n")
-	false_ = []byte(":0\r\n")
-	one    = true_
-	zero   = false_
+	pong = []byte("+PONG\r\n")
+	ok   = []byte("+OK\r\n")
+	t    = []byte(":1\r\n")
+	f    = []byte(":0\r\n")
+	one  = t
+	zero = f
 )
 
 // ErrInvalidValue is returned if the value to encode is invalid.
@@ -58,10 +58,10 @@ func encodeValue(w io.Writer, v interface{}) error {
 		return err
 	case bool:
 		if v {
-			_, err := w.Write(true_)
+			_, err := w.Write(t)
 			return err
 		}
-		_, err := w.Write(false_)
+		_, err := w.Write(f)
 		return err
 	case SimpleString:
 		return encodeSimpleString(w, v)
