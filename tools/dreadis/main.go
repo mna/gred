@@ -199,8 +199,7 @@ func main() {
 	h, cmds, errs := processResults(ws, out)
 
 	// Display the results
-	fmt.Printf(`
-sha256:     %x
+	fmt.Printf(`sha256:     %x
 clients:    %d
 iterations: %d
 duration:   %s

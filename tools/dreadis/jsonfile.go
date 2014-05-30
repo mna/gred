@@ -4,9 +4,26 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
+	"strconv"
+	"strings"
+	"time"
 
+	"code.google.com/p/go-uuid/uuid"
 	"github.com/garyburd/redigo/redis"
+)
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+type dynvalFlag int
+
+const (
+	dynClientId dynvalFlag = 1 << iota
+	dynUUID
+	dynRandInt
 )
 
 type runner interface {
@@ -17,15 +34,46 @@ type command struct {
 	name string
 	args []interface{}
 
-	// TODO: Pre-parse the args, prepare for dynamic placeholders
+	// Indices for dynamic placeholders
+	dynIx map[int]dynvalFlag
 }
 
 func (cmd command) run(id int, c redis.Conn, w io.Writer) (int, int) {
+	// Insert dynamic values, if any
+	args := cmd.args
+	if len(cmd.dynIx) > 0 {
+		args = make([]interface{}, len(cmd.args))
+		for i, arg := range cmd.args {
+			if fl, ok := cmd.dynIx[i]; ok {
+				sarg := arg.(string)
+				if fl&dynClientId == dynClientId {
+					sarg = strings.Replace(sarg, "%c", strconv.Itoa(id), -1)
+				}
+				if fl&dynUUID == dynUUID {
+					sarg = strings.Replace(sarg, "%u", uuid.NewRandom().String(), -1)
+				}
+				if fl&dynRandInt == dynRandInt {
+					sarg = strings.Replace(sarg, "%d", strconv.Itoa(rand.Int()), -1)
+				}
+				args[i] = sarg
+			} else {
+				args[i] = arg
+			}
+		}
+	}
+
 	// Execute the command
-	res, err := c.Do(cmd.name, cmd.args...)
+	begin := time.Now()
+	res, err := c.Do(cmd.name, args...)
+	end := time.Now()
+	// TODO: Logging time is interesting, but no more hash to compare results :(
 
 	// Log the results
-	w.Write([]byte(fmt.Sprintf("%d: %s %v | %#v | %#v\n", id, cmd.name, cmd.args, res, err)))
+	if bres, ok := res.([]byte); ok {
+		w.Write([]byte(fmt.Sprintf("%d: %s %v | %#v | %#v [%s]\n", id, cmd.name, args, string(bres), err, end.Sub(begin))))
+	} else {
+		w.Write([]byte(fmt.Sprintf("%d: %s %v | %#v | %#v [%s]\n", id, cmd.name, args, res, err, end.Sub(begin))))
+	}
 
 	// Return the number of commands executed, and the number of errors
 	if err != nil {
@@ -79,6 +127,39 @@ loop:
 	return ccnt, ecnt
 }
 
+func extractCommand(p string, cmd map[string]interface{}) (command, error) {
+	var newc command
+
+	if len(cmd) != 1 {
+		return newc, fmt.Errorf("%s: invalid JSON file (command must have a single key)", p)
+	}
+	for k, v := range cmd {
+		args, ok := v.([]interface{})
+		if !ok {
+			return newc, fmt.Errorf("%s: invalid JSON file (command args must be an array)", p)
+		}
+		newc = command{name: k, args: args, dynIx: make(map[int]dynvalFlag)}
+		for i, arg := range args {
+			if s, ok := arg.(string); ok {
+				var fl dynvalFlag
+				if strings.Contains(s, "%c") {
+					fl |= dynClientId
+				}
+				if strings.Contains(s, "%d") {
+					fl |= dynRandInt
+				}
+				if strings.Contains(s, "%u") {
+					fl |= dynUUID
+				}
+				if fl != 0 {
+					newc.dynIx[i] = fl
+				}
+			}
+		}
+	}
+	return newc, nil
+}
+
 func extractCommands(p string, cmds []interface{}) ([]runner, int, error) {
 	var rs []runner
 	var cnt int
@@ -87,16 +168,11 @@ func extractCommands(p string, cmds []interface{}) ([]runner, int, error) {
 		switch cmd := cmd.(type) {
 		case map[string]interface{}:
 			// Extract plain commands
-			if len(cmd) != 1 {
-				return nil, 0, fmt.Errorf("%s: invalid JSON file (command must have a single key)", p)
+			newc, err := extractCommand(p, cmd)
+			if err != nil {
+				return nil, 0, err
 			}
-			for k, v := range cmd {
-				args, ok := v.([]interface{})
-				if !ok {
-					return nil, 0, fmt.Errorf("%s: invalid JSON file (command args must be an array)", p)
-				}
-				rs = append(rs, command{k, args})
-			}
+			rs = append(rs, newc)
 			cnt++
 
 		case []interface{}:
@@ -106,6 +182,7 @@ func extractCommands(p string, cmds []interface{}) ([]runner, int, error) {
 			if err != nil {
 				return nil, 0, err
 			}
+
 			// Convert []runner to []command
 			pl.cmds = make([]command, len(list))
 			for i, l := range list {
@@ -128,18 +205,22 @@ func extractCommands(p string, cmds []interface{}) ([]runner, int, error) {
 
 func loadJSONFile(p string) (jsonFile, error) {
 	file := jsonFile{}
+
+	// Open the source file
 	f, err := os.Open(p)
 	if err != nil {
 		return file, err
 	}
 	defer f.Close()
 
+	// Decode the JSON
 	var cmds []interface{}
 	err = json.NewDecoder(f).Decode(&cmds)
 	if err != nil {
 		return file, err
 	}
 
+	// Extract the commands
 	list, cnt, err := extractCommands(p, cmds)
 	if err != nil {
 		return file, err

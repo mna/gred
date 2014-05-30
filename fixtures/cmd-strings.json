@@ -1,0 +1,15 @@
+[
+    {"append": ["str-%c", "%u"]},
+    {"get": ["str-%c"]},
+    {"getrange": ["str-%c", 6, 12]},
+    {"getset": ["str-%c", "new-str-%u"]},
+    {"setrange": ["str-%c", 0, "got-val-"]},
+    {"strlen": ["str-%c"]},
+    {"set": ["int-str-%c", 10]},
+    {"incr": ["int-str-%c"]},
+    {"incrby": ["int-str-%c", 12]},
+    {"decr": ["int-str-%c"]},
+    {"decrby": ["int-str-%c", 24]},
+    {"incrbyfloat": ["int-str-%c", 2.456]},
+    {"get": ["int-str-%c"]}
+]
