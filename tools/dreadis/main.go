@@ -21,8 +21,11 @@ dreadis supports the following flags:
   -t : duration of the test, defaults to the time required for 1 iteration over the files.
   -o : output file to log the replies, defaults to a temporary file, removed on exit.
 
-If -n is not specified and -t is specified, each client will iterate over its source file
-for this duration. If both -c and -t are specified, it will stop at the first threshold
+  -net  : network type, defaults to "tcp".
+  -addr : network address, defaults to ":6379".
+
+If -n is 0 and -t is specified, each client will iterate over its source file
+for this duration. If both -n and -t are specified, it will stop at the first threshold
 that is reached.
 
 FILES are JSON command files. Any number of source files may be specified, and they
@@ -89,6 +92,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"sync"
 	"time"
@@ -99,6 +103,9 @@ var (
 	iterations = flag.Int("n", 1, "number of iterations over the command files")
 	timeout    = flag.Duration("t", 0, "timeout or duration of the execution")
 	output     = flag.String("o", "", "output file to log server replies")
+
+	net  = flag.String("net", "tcp", "network type")
+	addr = flag.String("addr", ":6379", "network address")
 )
 
 var usage = `Usage: dreadis [options...] FILES...
@@ -112,6 +119,11 @@ Options:
       are discarded.
   -t  Maximum duration of the execution if -n is > 0, or
       duration of the execution if -n is set to 0.
+
+  -net   Network interface to use to connect to the server.
+         Defaults to "tcp".
+  -addr  Network address to use to connect to the server.
+         Defaults to ":6379".
 
 `
 
@@ -132,18 +144,29 @@ func main() {
 	files, err := loadJSONFiles(flag.Args())
 	if err != nil {
 		fmt.Fprint(os.Stderr, err)
+		fmt.Fprintln(os.Stderr)
+		os.Exit(2)
 	}
 
 	// Launch workers, dispatching the command files
 	start, stop := make(chan struct{}), make(chan struct{})
 	wg := sync.WaitGroup{}
-	ws := launchWorkers(args{
+	wg.Add(*concurrent)
+	ws, err := launchWorkers(args{
+		net:   *net,
+		addr:  *addr,
 		c:     *concurrent,
 		n:     *iterations,
 		wg:    &wg,
 		start: start,
 		stop:  stop,
 		files: files})
+
+	if err != nil {
+		fmt.Fprint(os.Stderr, err)
+		fmt.Fprintln(os.Stderr)
+		os.Exit(3)
+	}
 
 	// Start the workers
 	begin := time.Now()
@@ -162,11 +185,22 @@ func main() {
 	end := time.Now()
 
 	// Process results, compute hash
-	h, cmds, errs := processResults(wg)
+	var out io.Writer
+	if *output != "" {
+		f, err := os.Create(*output)
+		if err != nil {
+			fmt.Fprint(os.Stderr, err)
+			fmt.Fprintln(os.Stderr)
+			os.Exit(4)
+		}
+		defer f.Close()
+		out = f
+	}
+	h, cmds, errs := processResults(ws, out)
 
 	// Display the results
 	fmt.Printf(`
-sha256:     %s
+sha256:     %x
 clients:    %d
 iterations: %d
 duration:   %s

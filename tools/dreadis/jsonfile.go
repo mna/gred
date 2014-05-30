@@ -22,10 +22,10 @@ type command struct {
 
 func (cmd command) run(id int, c redis.Conn, w io.Writer) (int, int) {
 	// Execute the command
-	_, err := c.Do(cmd.name, cmd.args...)
+	res, err := c.Do(cmd.name, cmd.args...)
 
 	// Log the results
-	//writeResults(w, ret, err)
+	w.Write([]byte(fmt.Sprintf("%d: %s %v | %#v | %#v\n", id, cmd.name, cmd.args, res, err)))
 
 	// Return the number of commands executed, and the number of errors
 	if err != nil {
@@ -44,7 +44,8 @@ func (p pipeline) run(id int, c redis.Conn, w io.Writer) (int, int) {
 	for _, cmd := range p.cmds {
 		err := c.Send(cmd.name, cmd.args...)
 		if err != nil {
-			//TODO : Log error
+			w.Write([]byte(err.Error()))
+			w.Write([]byte{'\n'})
 			nerr++
 		}
 	}
@@ -56,12 +57,13 @@ func (p pipeline) run(id int, c redis.Conn, w io.Writer) (int, int) {
 }
 
 type jsonFile struct {
-	rs []runner
+	rs   []runner
+	cmds int
 }
 
 // TODO : How to stop a running, maybe blocked, command on a stop signal?
 
-func (j jsonFile) exec(id int, c redis.Conn, w io.Writer, stop <-chan bool) (int, int) {
+func (j jsonFile) exec(id int, c redis.Conn, w io.Writer, stop <-chan struct{}) (int, int) {
 	ccnt, ecnt := 0, 0
 loop:
 	for _, r := range j.rs {
@@ -77,48 +79,51 @@ loop:
 	return ccnt, ecnt
 }
 
-func extractCommands(p string, cmds []interface{}) ([]runner, error) {
+func extractCommands(p string, cmds []interface{}) ([]runner, int, error) {
 	var rs []runner
+	var cnt int
 
 	for _, cmd := range cmds {
 		switch cmd := cmd.(type) {
 		case map[string]interface{}:
 			// Extract plain commands
 			if len(cmd) != 1 {
-				return nil, fmt.Errorf("%s: invalid JSON file (command must have a single key)", p)
+				return nil, 0, fmt.Errorf("%s: invalid JSON file (command must have a single key)", p)
 			}
 			for k, v := range cmd {
 				args, ok := v.([]interface{})
 				if !ok {
-					return nil, fmt.Errorf("%s: invalid JSON file (command args must be an array)", p)
+					return nil, 0, fmt.Errorf("%s: invalid JSON file (command args must be an array)", p)
 				}
 				rs = append(rs, command{k, args})
 			}
+			cnt++
 
 		case []interface{}:
 			// Extract pipelined commands
 			pl := pipeline{}
-			list, err := extractCommands(p, cmd)
+			list, _, err := extractCommands(p, cmd)
 			if err != nil {
-				return nil, err
+				return nil, 0, err
 			}
 			// Convert []runner to []command
 			pl.cmds = make([]command, len(list))
 			for i, l := range list {
 				c, ok := l.(command)
 				if !ok {
-					return nil, fmt.Errorf("%s: invalid JSON file (pipeline must contain only commands)", p)
+					return nil, 0, fmt.Errorf("%s: invalid JSON file (pipeline must contain only commands)", p)
 				}
 				pl.cmds[i] = c
+				cnt++
 			}
 			rs = append(rs, pl)
 
 		default:
-			return nil, fmt.Errorf("%s: invalid JSON file (type %T)", p, cmd)
+			return nil, 0, fmt.Errorf("%s: invalid JSON file (type %T)", p, cmd)
 		}
 	}
 
-	return rs, nil
+	return rs, cnt, nil
 }
 
 func loadJSONFile(p string) (jsonFile, error) {
@@ -135,11 +140,12 @@ func loadJSONFile(p string) (jsonFile, error) {
 		return file, err
 	}
 
-	list, err := extractCommands(p, cmds)
+	list, cnt, err := extractCommands(p, cmds)
 	if err != nil {
 		return file, err
 	}
 	file.rs = list
+	file.cmds = cnt
 	return file, nil
 }
 

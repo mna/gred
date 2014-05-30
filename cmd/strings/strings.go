@@ -92,10 +92,14 @@ var get = cmd.NewSingleKeyCmd(
 		MinArgs: 1,
 		MaxArgs: 1,
 	},
-	srv.NoKeyDefaultVal,
+	srv.NoKeyNone,
 	getFn)
 
 func getFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
+	if k == nil {
+		return nil, nil
+	}
+
 	k.RLock()
 	defer k.RUnlock()
 

@@ -4,3 +4,4 @@
 *.test
 gred
 tools/genload/genload
+tools/dreadis/dreadis
