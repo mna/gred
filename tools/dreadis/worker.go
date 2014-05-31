@@ -15,7 +15,7 @@ type args struct {
 	files       []jsonFile
 }
 
-type CmdResult struct {
+type cmdResult struct {
 	ClientID     int
 	Command      string
 	Args         []interface{}
@@ -69,7 +69,7 @@ type worker struct {
 	id    int
 	files []jsonFile
 	conn  redis.Conn
-	res   []*CmdResult
+	res   []*cmdResult
 }
 
 func newWorker(id int, net string, addr string) (*worker, error) {
@@ -107,8 +107,8 @@ loop:
 	wg.Done()
 }
 
-func collectReplies(ws []*worker) []*CmdResult {
-	var res []*CmdResult
+func collectReplies(ws []*worker) []*cmdResult {
+	var res []*cmdResult
 
 	for _, w := range ws {
 		res = append(res, w.res...)

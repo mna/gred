@@ -26,7 +26,7 @@ const (
 )
 
 type runner interface {
-	run(int, redis.Conn) []*CmdResult
+	run(int, redis.Conn) []*cmdResult
 }
 
 type command struct {
@@ -63,14 +63,14 @@ func (cmd command) prepareArgs(id int) []interface{} {
 	return args
 }
 
-func (cmd command) run(id int, c redis.Conn) []*CmdResult {
+func (cmd command) run(id int, c redis.Conn) []*cmdResult {
 	args := cmd.prepareArgs(id)
 	// Execute the command
 	begin := time.Now()
 	res, err := c.Do(cmd.name, args...)
 	end := time.Now()
 
-	cr := &CmdResult{
+	cr := &cmdResult{
 		ClientID: id,
 		Command:  cmd.name,
 		Args:     args,
@@ -83,19 +83,19 @@ func (cmd command) run(id int, c redis.Conn) []*CmdResult {
 		cr.Result = string(bres)
 	}
 
-	return []*CmdResult{cr}
+	return []*cmdResult{cr}
 }
 
 type pipeline struct {
 	cmds []command
 }
 
-func (p pipeline) run(id int, c redis.Conn) []*CmdResult {
-	crs := make([]*CmdResult, len(p.cmds)+1)
+func (p pipeline) run(id int, c redis.Conn) []*cmdResult {
+	crs := make([]*cmdResult, len(p.cmds)+1)
 	for i, cmd := range p.cmds {
 		args := cmd.prepareArgs(id)
 		err := c.Send(cmd.name, args...)
-		crs[i] = &CmdResult{
+		crs[i] = &cmdResult{
 			ClientID:  id,
 			Command:   cmd.name,
 			Args:      args,
@@ -110,7 +110,7 @@ func (p pipeline) run(id int, c redis.Conn) []*CmdResult {
 	end := time.Now()
 
 	// Store the pipeline exec results
-	crs[len(crs)-1] = &CmdResult{
+	crs[len(crs)-1] = &cmdResult{
 		ClientID:     id,
 		Err:          err,
 		PipelineExec: true,
@@ -140,8 +140,8 @@ type jsonFile struct {
 // exec executes all commands in this jsonFile, stopping once the stop channel
 // is signaled. It returns the number of commands executed, and the number of
 // errors returned from the server.
-func (j jsonFile) exec(id int, c redis.Conn, stop <-chan struct{}) []*CmdResult {
-	var res []*CmdResult
+func (j jsonFile) exec(id int, c redis.Conn, stop <-chan struct{}) []*cmdResult {
+	var res []*cmdResult
 loop:
 	for _, r := range j.rs {
 		select {

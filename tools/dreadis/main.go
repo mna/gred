@@ -141,7 +141,7 @@ Options:
   template, which must use a {{range .}}...{{end}} action since
   a slice of such struct is passed as template value:
 
-    type CmdResult struct {
+    type cmdResult struct {
     	ClientID     int
     	Command      string
     	Args         []interface{}
