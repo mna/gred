@@ -21,7 +21,7 @@ func init() {
 type dynvalFlag int
 
 const (
-	dynClientId dynvalFlag = 1 << iota
+	dynClientID dynvalFlag = 1 << iota
 	dynUUID
 	dynRandInt
 )
@@ -46,7 +46,7 @@ func (cmd command) run(id int, c redis.Conn, w io.Writer) (int, int) {
 		for i, arg := range cmd.args {
 			if fl, ok := cmd.dynIx[i]; ok {
 				sarg := arg.(string)
-				if fl&dynClientId == dynClientId {
+				if fl&dynClientID == dynClientID {
 					sarg = strings.Replace(sarg, "%c", strconv.Itoa(id), -1)
 				}
 				if fl&dynUUID == dynUUID {
@@ -143,7 +143,7 @@ func extractCommand(p string, cmd map[string]interface{}) (command, error) {
 			if s, ok := arg.(string); ok {
 				var fl dynvalFlag
 				if strings.Contains(s, "%c") {
-					fl |= dynClientId
+					fl |= dynClientID
 				}
 				if strings.Contains(s, "%d") {
 					fl |= dynRandInt
