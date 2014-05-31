@@ -74,13 +74,9 @@ func (cmd command) run(id int, c redis.Conn) []*cmdResult {
 		ClientID: id,
 		Command:  cmd.name,
 		Args:     args,
-		Result:   res,
+		Result:   cleanResults(res),
 		Err:      err,
 		Time:     end.Sub(begin),
-	}
-	// Log the results
-	if bres, ok := res.([]byte); ok {
-		cr.Result = string(bres)
 	}
 
 	return []*cmdResult{cr}
@@ -120,14 +116,25 @@ func (p pipeline) run(id int, c redis.Conn) []*cmdResult {
 	if err == nil {
 		// Save results for each command
 		for i, r := range res {
-			crs[i].Result = r
-			if br, ok := r.([]byte); ok {
-				crs[i].Result = string(br)
-			}
+			crs[i].Result = cleanResults(r)
 		}
 	}
 
 	return crs
+}
+
+func cleanResults(res interface{}) interface{} {
+	switch res := res.(type) {
+	case []byte:
+		return string(res)
+	case []interface{}:
+		for i := 0; i < len(res); i++ {
+			res[i] = cleanResults(res[i])
+		}
+		return res
+	default:
+		return res
+	}
 }
 
 type jsonFile struct {

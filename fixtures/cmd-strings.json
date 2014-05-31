@@ -11,5 +11,7 @@
     {"decr": ["int-str-%c"]},
     {"decrby": ["int-str-%c", 24]},
     {"incrbyfloat": ["int-str-%c", 2.456]},
-    {"get": ["int-str-%c"]}
+    {"get": ["int-str-%c"]},
+    {"del": ["str-%c"]},
+    {"del": ["int-str-%c"]}
 ]

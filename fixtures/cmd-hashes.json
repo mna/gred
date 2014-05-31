@@ -1,0 +1,19 @@
+[
+    {"hset": ["h-%c", "k-%c", "ceci n'est pas un string"]},
+    {"hexists": ["h-%c", "k-%c"]},
+    {"hexists": ["h-%c", "zz"]},
+    {"hexists": ["h-%c", "k-%c"]},
+    {"hget": ["h-%c", "k-%c"]},
+    {"hincrby": ["h-%c", "fint", 12]},
+    {"hincrbyfloat": ["h-%c", "ffloat", 3.456]},
+    {"hkeys": ["h-%c"]},
+    {"hgetall": ["h-%c"]},
+    {"hlen": ["h-%c"]},
+    {"hdel": ["h-%c", "ffloat", "zz"]},
+    {"hsetnx": ["h-%c", "bob", "oob"]},
+    {"hvals": ["h-%c"]},
+    {"hmget": ["h-%c", "zz", "fint", "ffloat"]},
+    {"hmset": ["h-%c", "a", "1", "b", "2"]},
+    {"hsetnx": ["h-%c", "fint", "z"]},
+    {"del": ["h-%c"]}
+]
