@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"math/rand"
 	"os"
 	"strconv"
@@ -27,7 +26,7 @@ const (
 )
 
 type runner interface {
-	run(int, redis.Conn, io.Writer) (int, int)
+	run(int, redis.Conn) []*CmdResult
 }
 
 type command struct {
@@ -38,7 +37,7 @@ type command struct {
 	dynIx map[int]dynvalFlag
 }
 
-func (cmd command) run(id int, c redis.Conn, w io.Writer) (int, int) {
+func (cmd command) prepareArgs(id int) []interface{} {
 	// Insert dynamic values, if any
 	args := cmd.args
 	if len(cmd.dynIx) > 0 {
@@ -61,47 +60,74 @@ func (cmd command) run(id int, c redis.Conn, w io.Writer) (int, int) {
 			}
 		}
 	}
+	return args
+}
 
+func (cmd command) run(id int, c redis.Conn) []*CmdResult {
+	args := cmd.prepareArgs(id)
 	// Execute the command
 	begin := time.Now()
 	res, err := c.Do(cmd.name, args...)
 	end := time.Now()
-	// TODO: Logging time is interesting, but no more hash to compare results :(
 
+	cr := &CmdResult{
+		ClientID: id,
+		Command:  cmd.name,
+		Args:     args,
+		Result:   res,
+		Err:      err,
+		Time:     end.Sub(begin),
+	}
 	// Log the results
 	if bres, ok := res.([]byte); ok {
-		w.Write([]byte(fmt.Sprintf("%d [%s]: %s %v | %#v | %#v\n", id, end.Sub(begin), cmd.name, args, string(bres), err)))
-	} else {
-		w.Write([]byte(fmt.Sprintf("%d [%s]: %s %v | %#v | %#v\n", id, end.Sub(begin), cmd.name, args, res, err)))
+		cr.Result = string(bres)
 	}
 
-	// Return the number of commands executed, and the number of errors
-	if err != nil {
-		return 1, 1
-	}
-	return 1, 0
+	return []*CmdResult{cr}
 }
 
 type pipeline struct {
 	cmds []command
 }
 
-func (p pipeline) run(id int, c redis.Conn, w io.Writer) (int, int) {
-	var nerr int
-
-	for _, cmd := range p.cmds {
-		err := c.Send(cmd.name, cmd.args...)
-		if err != nil {
-			w.Write([]byte(err.Error()))
-			w.Write([]byte{'\n'})
-			nerr++
+func (p pipeline) run(id int, c redis.Conn) []*CmdResult {
+	crs := make([]*CmdResult, len(p.cmds)+1)
+	for i, cmd := range p.cmds {
+		args := cmd.prepareArgs(id)
+		err := c.Send(cmd.name, args...)
+		crs[i] = &CmdResult{
+			ClientID:  id,
+			Command:   cmd.name,
+			Args:      args,
+			Err:       err,
+			Pipelined: true,
 		}
 	}
-	_, err := c.Do("")
-	if err != nil {
-		nerr++
+
+	// Execute all pipelined commands
+	begin := time.Now()
+	res, err := redis.Values(c.Do(""))
+	end := time.Now()
+
+	// Store the pipeline exec results
+	crs[len(crs)-1] = &CmdResult{
+		ClientID:     id,
+		Err:          err,
+		PipelineExec: true,
+		Time:         end.Sub(begin),
 	}
-	return len(p.cmds), nerr
+
+	if err == nil {
+		// Save results for each command
+		for i, r := range res {
+			crs[i].Result = r
+			if br, ok := r.([]byte); ok {
+				crs[i].Result = string(br)
+			}
+		}
+	}
+
+	return crs
 }
 
 type jsonFile struct {
@@ -111,8 +137,11 @@ type jsonFile struct {
 
 // TODO : How to stop a running, maybe blocked, command on a stop signal?
 
-func (j jsonFile) exec(id int, c redis.Conn, w io.Writer, stop <-chan struct{}) (int, int) {
-	ccnt, ecnt := 0, 0
+// exec executes all commands in this jsonFile, stopping once the stop channel
+// is signaled. It returns the number of commands executed, and the number of
+// errors returned from the server.
+func (j jsonFile) exec(id int, c redis.Conn, stop <-chan struct{}) []*CmdResult {
+	var res []*CmdResult
 loop:
 	for _, r := range j.rs {
 		select {
@@ -120,24 +149,28 @@ loop:
 			break loop
 		default:
 		}
-		nc, ne := r.run(id, c, w)
-		ccnt += nc
-		ecnt += ne
+		crs := r.run(id, c)
+		res = append(res, crs...)
 	}
-	return ccnt, ecnt
+	return res
 }
 
 func extractCommand(p string, cmd map[string]interface{}) (command, error) {
 	var newc command
 
+	// Must have a single key - the command name
 	if len(cmd) != 1 {
 		return newc, fmt.Errorf("%s: invalid JSON file (command must have a single key)", p)
 	}
+
+	// Loop through the map, it only has a single key
 	for k, v := range cmd {
 		args, ok := v.([]interface{})
 		if !ok {
 			return newc, fmt.Errorf("%s: invalid JSON file (command args must be an array)", p)
 		}
+
+		// Create the command and inspect arguments for dynamic values placeholders
 		newc = command{name: k, args: args, dynIx: make(map[int]dynvalFlag)}
 		for i, arg := range args {
 			if s, ok := arg.(string); ok {
@@ -156,6 +189,7 @@ func extractCommand(p string, cmd map[string]interface{}) (command, error) {
 				}
 			}
 		}
+		break
 	}
 	return newc, nil
 }
@@ -227,6 +261,7 @@ func loadJSONFile(p string) (jsonFile, error) {
 	}
 	file.rs = list
 	file.cmds = cnt
+
 	return file, nil
 }
 

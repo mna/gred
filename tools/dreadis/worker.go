@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bytes"
-	"crypto/sha256"
-	"io"
 	"sync"
+	"time"
 
 	"github.com/garyburd/redigo/redis"
 )
@@ -15,6 +13,17 @@ type args struct {
 	wg          *sync.WaitGroup
 	start, stop chan struct{}
 	files       []jsonFile
+}
+
+type CmdResult struct {
+	ClientID     int
+	Command      string
+	Args         []interface{}
+	Result       interface{}
+	Err          error
+	Time         time.Duration
+	Pipelined    bool
+	PipelineExec bool
 }
 
 func launchWorkers(a args) ([]*worker, error) {
@@ -57,11 +66,10 @@ func launchWorkers(a args) ([]*worker, error) {
 }
 
 type worker struct {
-	id           int
-	files        []jsonFile
-	replies      *bytes.Buffer
-	conn         redis.Conn
-	ncmds, nerrs int
+	id    int
+	files []jsonFile
+	conn  redis.Conn
+	res   []*CmdResult
 }
 
 func newWorker(id int, net string, addr string) (*worker, error) {
@@ -70,7 +78,7 @@ func newWorker(id int, net string, addr string) (*worker, error) {
 		return nil, err
 	}
 
-	return &worker{id: id, conn: conn, replies: bytes.NewBuffer(nil)}, nil
+	return &worker{id: id, conn: conn}, nil
 }
 
 func (w *worker) work(n int, wg *sync.WaitGroup, start, stop chan struct{}) {
@@ -85,9 +93,8 @@ loop:
 			}
 		}
 		for _, f := range w.files {
-			nc, ne := f.exec(w.id, w.conn, w.replies, stop)
-			w.ncmds += nc
-			w.nerrs += ne
+			res := f.exec(w.id, w.conn, stop)
+			w.res = append(w.res, res...)
 
 			select {
 			case <-stop:
@@ -100,19 +107,27 @@ loop:
 	wg.Done()
 }
 
-func processResults(ws []*worker, out io.Writer) ([]byte, int, int) {
+func collectReplies(ws []*worker) []*CmdResult {
+	var res []*CmdResult
+
+	for _, w := range ws {
+		res = append(res, w.res...)
+	}
+	return res
+}
+
+func collectStats(ws []*worker) (int, int) {
 	ncmd, nerr := 0, 0
 
-	var mw io.Writer
-	h := sha256.New()
-	mw = h
-	if out != nil {
-		mw = io.MultiWriter(h, out)
-	}
 	for _, w := range ws {
-		io.Copy(mw, w.replies)
-		ncmd += w.ncmds
-		nerr += w.nerrs
+		for _, cr := range w.res {
+			if !cr.PipelineExec {
+				ncmd++
+			}
+			if cr.Err != nil {
+				nerr++
+			}
+		}
 	}
-	return h.Sum(nil), ncmd, nerr
+	return ncmd, nerr
 }
