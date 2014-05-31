@@ -1,8 +1,8 @@
 [
-    {"append": ["str-%c", "%u"]},
+    {"append": ["str-%c", "ceci n'est pas un string"]},
     {"get": ["str-%c"]},
     {"getrange": ["str-%c", 6, 12]},
-    {"getset": ["str-%c", "new-str-%u"]},
+    {"getset": ["str-%c", "new-str-with-an-old-value"]},
     {"setrange": ["str-%c", 0, "got-val-"]},
     {"strlen": ["str-%c"]},
     {"set": ["int-str-%c", 10]},
