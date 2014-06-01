@@ -154,10 +154,10 @@ The commands are listed by category, as it is on the [redis website][redis].
 | ZRANGEBYLEX      | ø      | |
 | ZRANGEBYSCORE    | ø      | |
 | ZRANK            | ø      | |
-| ZREM             | ø      | |
-| ZREMRANGEBYLEX   | ø      | |
-| ZREMRANGEBYRANK  | ø      | |
-| ZREMRANGEBYSCORE | ø      | |
+| ZREM             | ø      | * |
+| ZREMRANGEBYLEX   | ø      | * |
+| ZREMRANGEBYRANK  | ø      | * |
+| ZREMRANGEBYSCORE | ø      | * |
 | ZREVRANGE        | ø      | |
 | ZREVRANGEBYSCORE | ø      | |
 | ZREVRANK         | ø      | |
