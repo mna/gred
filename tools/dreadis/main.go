@@ -23,11 +23,10 @@ dreadis supports the following flags:
   -t : maximum duration of the test, defaults to 0 (no time limit).
   -o : output file to log the replies, defaults to stdout.
   -f : format of the output, using the syntax of the Go package text/template.
-       Defaults to no output.
+       Defaults to the predefined stats output.
 
-  -no-stats : do not display the execution statistics.
-  -net      : network type, defaults to "tcp".
-  -addr     : network address, defaults to ":6379".
+  -net   : network type, defaults to "tcp".
+  -addr  : network address, defaults to ":6379".
 
 If -n is 0 (its default) and -t is specified, each client will iterate over its source file
 for this duration. If both -n and -t are specified, it will stop at the first threshold
@@ -40,8 +39,8 @@ first file to the first client, second file to the second client, etc. until all
 have at least one file, and all files are executed by at least one client.
 
 So if -c = 1 and there is more than one file specified, the same client will execute
-all files. Conversely, if there are many clients and just one file, all clients will
-run the same file.
+all files in sequence. Conversely, if there are many clients and just one file,
+all clients will run the same file.
 
 JSON command files
 
@@ -52,7 +51,7 @@ The JSON command files have the following format:
         [
             {"pipelined_cmd1": ["arg1", "arg2"]},
             {"pipelined_cmd2": ["arg1"]}
-        ],
+        ]
     ]
 
 Objects on the top-level array are straight commands, executed without
@@ -67,7 +66,7 @@ placeholders have the following meaning:
 
     %c : replaced with the client id.
     %u : replaced with a random UUID, newly generated on each execution of the command.
-    %d : a random integer.
+    %d : a random integer, newly generated on each execution of the command.
 
 Results
 
@@ -82,14 +81,14 @@ are used, the results are very likely to be different from one execution to anot
 Also, some commands such as TIME will return different results at different times,
 by definition.
 
-The command produces various statistics, printed to stdout on completion unless
-the -no-stats flag is set:
+The command produces various statistics, available for the -f output format
+and printed by the stats predefined format:
 
-  clients: <number of concurrent clients, the -c flag>
-  duration: <actual execution duration, which may be different than the -t flag>
-  iterations: <number of iteration in the files, the -n flag>
-  commands: <number of commands executed>
-  errors: <number of errors received from the server>
+  Clients: <number of concurrent clients, the -c flag>
+  Duration: <actual execution duration, which may be different than the -t flag>
+  Iterations: <number of iteration in the files, the -n flag>
+  Commands: <number of commands executed>
+  Errors: <number of errors received from the server>
 */
 package main
 
@@ -103,26 +102,27 @@ import (
 	"time"
 )
 
+// The command-line flags
 var (
 	concurrent = flag.Int("c", 1, "number of concurrent clients")
 	iterations = flag.Int("n", 0, "number of iterations over the command files")
 	timeout    = flag.Duration("t", 0, "timeout or duration of the execution")
 	output     = flag.String("o", "", "output file to log server replies")
-	format     = flag.String("f", "", "format of the server replies")
+	format     = flag.String("f", "stats", "format of the server replies")
 
-	nostats = flag.Bool("no-stats", false, "do not display execution statistics")
-	net     = flag.String("net", "tcp", "network type")
-	addr    = flag.String("addr", ":6379", "network address")
+	net  = flag.String("net", "tcp", "network type")
+	addr = flag.String("addr", ":6379", "network address")
 )
 
+// Command-line usage of the tool
 var usage = `Usage: dreadis [options...] FILES...
 
 Options:
   -c  Number of concurrent clients to run. Defaults to 1.
-  -f  Format of server replies output, in Go's text/template
-      syntax. Defaults to no output of the server replies.
+  -f  Format of the printed output, in Go's text/template
+      syntax. Defaults to the predefined 'stats' format.
       Predefined formats can be used by name, they are
-      'short', 'std' and 'stdtime'.
+      'stats', 'err', 'std' and 'stdtime'.
   -n  Number of iterations over the command files. Defaults
       to 0, which behaves like -n=1 unless -t is set, in which
       case it will execute the commands until -t is reached.
@@ -131,15 +131,25 @@ Options:
   -t  Maximum duration of the execution if -n is > 0, or
       duration of the execution if -n is set to 0.
 
-  -no-stats Do not display execution statistics.
   -net      Network interface to use to connect to the server.
             Defaults to "tcp".
   -addr     Network address to use to connect to the server.
             Defaults to ":6379".
 
   The following struct fields are available for the format (-f)
-  template, which must use a {{range .}}...{{end}} action since
-  a slice of such struct is passed as template value:
+  template, which must use a {{range .Results}}...{{end}} action to
+  print 'cmdResult's (an execInfo value is passed to the template):
+
+    type execInfo struct {
+    	Clients    int
+    	Iterations int
+    	Timeout    time.Duration
+    	Time       time.Duration
+    	Commands   int
+    	Errors     int
+    	Files      []string
+    	Results    []*cmdResult
+    }
 
     type cmdResult struct {
     	ClientID     int
@@ -155,28 +165,15 @@ Options:
 
 var (
 	fmts = map[string]string{
-		"std":     "{{range .}}[{{.ClientID}}] {{.Command}} {{.Args}} | {{.Result}} | {{.Err}}\n{{end}}",
-		"stdtime": "{{range .}}[{{.ClientID}}] [{{.Time}}] {{.Command}} {{.Args}} | {{.Result}} | {{.Err}}\n{{end}}",
-		"short":   "{{range .}}[{{.ClientID}}] {{.Command}} | {{.Err}}\n{{end}}",
+		"stats":   "Clients: {{.Clients}}\nIterations: {{.Iterations}}\nDuration: {{.Time}}\nCommands: {{.Commands}}\nErrors: {{.Errors}}\n",
+		"std":     "{{range .Results}}[{{.ClientID}}] {{.Command}} {{.Args}} | {{.Result}} | {{.Err}}\n{{end}}",
+		"stdtime": "{{range .Results}}[{{.ClientID}}] [{{.Time}}] {{.Command}} {{.Args}} | {{.Result}} | {{.Err}}\n{{end}}",
+		"err":     "{{range .Results}}[{{.ClientID}}] {{.Command}} | {{.Err}}\n{{end}}",
 	}
 )
 
 func main() {
-	// Parse and validate args
-	flag.Usage = func() {
-		fmt.Fprint(os.Stderr, usage)
-	}
-	flag.Parse()
-	if flag.NArg() < 1 {
-		printUsage("", 1)
-	}
-	if *concurrent < 1 {
-		*concurrent = 1
-	}
-	// -n = 1 if no timeout is set.
-	if *timeout == 0 && *iterations == 0 {
-		*iterations = 1
-	}
+	parseFlags()
 
 	// Parse output template, so that it fails before execution
 	// in case of problem.
@@ -188,18 +185,14 @@ func main() {
 		}
 		tpl, err = template.New("main").Parse(*format)
 		if err != nil {
-			fmt.Fprint(os.Stderr, err)
-			fmt.Fprintln(os.Stderr)
-			os.Exit(1)
+			printMessage(err.Error(), 1)
 		}
 	}
 
 	// Load command files
 	files, err := loadJSONFiles(flag.Args())
 	if err != nil {
-		fmt.Fprint(os.Stderr, err)
-		fmt.Fprintln(os.Stderr)
-		os.Exit(2)
+		printMessage(err.Error(), 2)
 	}
 
 	// Launch workers, dispatching the command files
@@ -217,9 +210,7 @@ func main() {
 		files: files})
 
 	if err != nil {
-		fmt.Fprint(os.Stderr, err)
-		fmt.Fprintln(os.Stderr)
-		os.Exit(3)
+		printMessage(err.Error(), 3)
 	}
 
 	// Start the workers
@@ -240,48 +231,69 @@ func main() {
 
 	// Print output if a format is specified
 	if *format != "" {
-		var out io.Writer
-		out = os.Stdout
-		if *output != "" {
-			f, err := os.Create(*output)
-			if err != nil {
-				fmt.Fprint(os.Stderr, err)
-				fmt.Fprintln(os.Stderr)
-				os.Exit(4)
-			}
-			defer f.Close()
-			out = f
+		res, ncmd, nerr := collectReplies(ws)
+		ex := &execInfo{
+			Clients:    *concurrent,
+			Iterations: *iterations,
+			Timeout:    *timeout,
+			Time:       end.Sub(begin),
+			Commands:   ncmd,
+			Errors:     nerr,
+			Files:      flag.Args(),
+			Results:    res,
 		}
+		printResults(ex, tpl, *output)
+	}
+}
 
-		res := collectReplies(ws)
-		err = tpl.Execute(out, res)
+func printResults(ex *execInfo, tpl *template.Template, outFile string) {
+	var out io.Writer
+	out = os.Stdout
+	if outFile != "" {
+		f, err := os.Create(outFile)
 		if err != nil {
-			fmt.Fprint(os.Stderr, err)
-			fmt.Fprintln(os.Stderr)
-			os.Exit(5)
+			printMessage(err.Error(), 4)
 		}
-		fmt.Fprint(out, "\n")
+		defer f.Close()
+		out = f
 	}
 
-	// Display stats
-	if !*nostats {
-		cmds, errs := collectStats(ws)
+	err := tpl.Execute(out, ex)
+	if err != nil {
+		printMessage(err.Error(), 5)
+	}
+}
 
-		// Display the results
-		fmt.Printf(`clients:    %d
-iterations: %d
-duration:   %s
-commands:   %d
-errors:     %d
-`, *concurrent, *iterations, end.Sub(begin), cmds, errs)
+func parseFlags() {
+	// Parse and validate args
+	flag.Usage = func() {
+		fmt.Fprint(os.Stderr, usage)
+	}
+	flag.Parse()
+	if flag.NArg() < 1 {
+		printUsage("", 1)
+	}
+	if *concurrent < 1 {
+		*concurrent = 1
+	}
+	// -n = 1 if no timeout is set.
+	if *timeout == 0 && *iterations == 0 {
+		*iterations = 1
 	}
 }
 
 func printUsage(msg string, exitCode int) {
 	if msg != "" {
-		fmt.Fprintln(os.Stderr, msg)
-		fmt.Fprintln(os.Stderr, "")
+		printMessage(msg, 0)
 	}
 	flag.Usage()
 	os.Exit(exitCode)
+}
+
+func printMessage(msg string, exitCode int) {
+	fmt.Fprintln(os.Stderr, msg)
+	fmt.Fprintln(os.Stderr, "")
+	if exitCode > 0 {
+		os.Exit(exitCode)
+	}
 }

@@ -15,6 +15,17 @@ type args struct {
 	files       []jsonFile
 }
 
+type execInfo struct {
+	Clients    int
+	Iterations int
+	Timeout    time.Duration
+	Time       time.Duration
+	Commands   int
+	Errors     int
+	Files      []string
+	Results    []*cmdResult
+}
+
 type cmdResult struct {
 	ClientID     int
 	Command      string
@@ -107,19 +118,12 @@ loop:
 	wg.Done()
 }
 
-func collectReplies(ws []*worker) []*cmdResult {
+func collectReplies(ws []*worker) ([]*cmdResult, int, int) {
 	var res []*cmdResult
+	var ncmd, nerr int
 
 	for _, w := range ws {
 		res = append(res, w.res...)
-	}
-	return res
-}
-
-func collectStats(ws []*worker) (int, int) {
-	ncmd, nerr := 0, 0
-
-	for _, w := range ws {
 		for _, cr := range w.res {
 			if !cr.PipelineExec {
 				ncmd++
@@ -129,5 +133,5 @@ func collectStats(ws []*worker) (int, int) {
 			}
 		}
 	}
-	return ncmd, nerr
+	return res, ncmd, nerr
 }
