@@ -1,3 +1,5 @@
+// Package cmd defines the common command interfaces. Actual command implementations
+// are registered in this package and then exposed by the server.
 package cmd
 
 import (
