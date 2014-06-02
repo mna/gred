@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/PuerkitoBio/gred/vals"
+	"github.com/PuerkitoBio/gred/types"
 )
 
 // NoKeyFlag indicates what the DB should do when a non-existing key
@@ -202,7 +202,7 @@ func (d *db) setExDuration(name string, dur time.Duration, v string, fn func()) 
 	// Set its value
 	k.Lock()
 	defer k.Unlock()
-	kv := k.Val().(vals.String)
+	kv := k.Val().(types.String)
 	kv.Set(v)
 
 	// Expire the key
@@ -313,15 +313,15 @@ func (d *db) lockGetKey(excl bool, name string, flag NoKeyFlag) (Key, func()) {
 	var k Key
 	switch flag {
 	case NoKeyCreateString:
-		k = NewKey(name, vals.NewIncString(""))
+		k = NewKey(name, types.NewIncString(""))
 	case NoKeyCreateStringInt:
-		k = NewKey(name, vals.NewIncString("0"))
+		k = NewKey(name, types.NewIncString("0"))
 	case NoKeyCreateHash:
-		k = NewKey(name, vals.NewIncHash())
+		k = NewKey(name, types.NewIncHash())
 	case NoKeyCreateList:
-		k = NewKey(name, vals.NewList())
+		k = NewKey(name, types.NewList())
 	case NoKeyCreateSet:
-		k = NewKey(name, vals.NewSet())
+		k = NewKey(name, types.NewSet())
 	default:
 		panic(fmt.Sprintf("db.Key NoKeyFlag not implemented: %d", flag))
 	}

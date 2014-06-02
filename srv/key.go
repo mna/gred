@@ -3,7 +3,7 @@ package srv
 import (
 	"sync"
 
-	"github.com/PuerkitoBio/gred/vals"
+	"github.com/PuerkitoBio/gred/types"
 )
 
 // RWLocker defines the methods required to implement a multi-reader,
@@ -23,7 +23,7 @@ type Key interface {
 	Expirer
 
 	// Val returns the underlying value
-	Val() vals.Value
+	Val() types.Value
 
 	// Name returns the name of the key
 	Name() string
@@ -34,12 +34,12 @@ type key struct {
 	sync.RWMutex
 	*expirer
 
-	v    vals.Value
+	v    types.Value
 	name string
 }
 
 // NewKey creates a new Key with the specified name and value.
-func NewKey(name string, v vals.Value) Key {
+func NewKey(name string, v types.Value) Key {
 	return &key{
 		expirer: &expirer{},
 		v:       v,
@@ -51,4 +51,4 @@ func NewKey(name string, v vals.Value) Key {
 func (k *key) Name() string { return k.name }
 
 // Val returns the value of the key.
-func (k *key) Val() vals.Value { return k.v }
+func (k *key) Val() types.Value { return k.v }

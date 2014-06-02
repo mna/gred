@@ -5,7 +5,7 @@ import (
 
 	"github.com/PuerkitoBio/gred/cmd"
 	"github.com/PuerkitoBio/gred/srv"
-	"github.com/PuerkitoBio/gred/vals"
+	"github.com/PuerkitoBio/gred/types"
 )
 
 func init() {
@@ -44,7 +44,7 @@ func hdelFn(db srv.DB, args []string, ints []int64, floats []float64) (interface
 
 	// Delete the values
 	v := k.Val()
-	if v, ok := v.(vals.Hash); ok {
+	if v, ok := v.(types.Hash); ok {
 		ret := v.HDel(args[1:]...)
 		if ret > 0 {
 			// Is it now an empty hash?
@@ -70,7 +70,7 @@ func hexistsFn(k srv.Key, args []string, ints []int64, floats []float64) (interf
 	defer k.RUnlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.Hash); ok {
+	if v, ok := v.(types.Hash); ok {
 		return v.HExists(args[1]), nil
 	}
 	return nil, cmd.ErrInvalidValType
@@ -89,7 +89,7 @@ func hgetFn(k srv.Key, args []string, ints []int64, floats []float64) (interface
 	defer k.RUnlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.Hash); ok {
+	if v, ok := v.(types.Hash); ok {
 		ret, ok := v.HGet(args[1])
 		if ok {
 			return ret, nil
@@ -112,7 +112,7 @@ func hgetallFn(k srv.Key, args []string, ints []int64, floats []float64) (interf
 	defer k.RUnlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.Hash); ok {
+	if v, ok := v.(types.Hash); ok {
 		return v.HGetAll(), nil
 	}
 	return nil, cmd.ErrInvalidValType
@@ -132,7 +132,7 @@ func hincrbyFn(k srv.Key, args []string, ints []int64, floats []float64) (interf
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.IncHash); ok {
+	if v, ok := v.(types.IncHash); ok {
 		val, ok := v.HIncrBy(args[1], ints[0])
 		if ok {
 			return val, nil
@@ -156,7 +156,7 @@ func hincrbyfloatFn(k srv.Key, args []string, ints []int64, floats []float64) (i
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.IncHash); ok {
+	if v, ok := v.(types.IncHash); ok {
 		val, ok := v.HIncrByFloat(args[1], floats[0])
 		if ok {
 			return val, nil
@@ -179,7 +179,7 @@ func hkeysFn(k srv.Key, args []string, ints []int64, floats []float64) (interfac
 	defer k.RUnlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.Hash); ok {
+	if v, ok := v.(types.Hash); ok {
 		return v.HKeys(), nil
 	}
 	return nil, cmd.ErrInvalidValType
@@ -198,7 +198,7 @@ func hlenFn(k srv.Key, args []string, ints []int64, floats []float64) (interface
 	defer k.RUnlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.Hash); ok {
+	if v, ok := v.(types.Hash); ok {
 		return v.HLen(), nil
 	}
 	return nil, cmd.ErrInvalidValType
@@ -217,7 +217,7 @@ func hmgetFn(k srv.Key, args []string, ints []int64, floats []float64) (interfac
 	defer k.RUnlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.Hash); ok {
+	if v, ok := v.(types.Hash); ok {
 		return v.HMGet(args[1:]...), nil
 	}
 	return nil, cmd.ErrInvalidValType
@@ -243,7 +243,7 @@ func hmsetFn(k srv.Key, args []string, ints []int64, floats []float64) (interfac
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.Hash); ok {
+	if v, ok := v.(types.Hash); ok {
 		v.HMSet(args[1:]...)
 		return cmd.OKVal, nil
 	}
@@ -263,7 +263,7 @@ func hsetFn(k srv.Key, args []string, ints []int64, floats []float64) (interface
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.Hash); ok {
+	if v, ok := v.(types.Hash); ok {
 		return v.HSet(args[1], args[2]), nil
 	}
 	return nil, cmd.ErrInvalidValType
@@ -282,7 +282,7 @@ func hsetnxFn(k srv.Key, args []string, ints []int64, floats []float64) (interfa
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.Hash); ok {
+	if v, ok := v.(types.Hash); ok {
 		return v.HSetNx(args[1], args[2]), nil
 	}
 	return nil, cmd.ErrInvalidValType
@@ -301,7 +301,7 @@ func hvalsFn(k srv.Key, args []string, ints []int64, floats []float64) (interfac
 	defer k.RUnlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.Hash); ok {
+	if v, ok := v.(types.Hash); ok {
 		return v.HVals(), nil
 	}
 	return nil, cmd.ErrInvalidValType

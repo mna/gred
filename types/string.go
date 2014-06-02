@@ -1,4 +1,4 @@
-package vals
+package types
 
 // String defines the methods required to implement a String.
 type String interface {

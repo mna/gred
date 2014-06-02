@@ -3,7 +3,7 @@ package srv
 import (
 	"time"
 
-	"github.com/PuerkitoBio/gred/vals"
+	"github.com/PuerkitoBio/gred/types"
 )
 
 var dv defVal
@@ -11,11 +11,11 @@ var dv defVal
 var empty = []string{}
 
 var (
-	_ Key         = (*defKey)(nil)
-	_ vals.String = (*defVal)(nil)
-	_ vals.Hash   = (*defVal)(nil)
-	_ vals.List   = (*defVal)(nil)
-	_ vals.Set    = (*defVal)(nil)
+	_ Key          = (*defKey)(nil)
+	_ types.String = (*defVal)(nil)
+	_ types.Hash   = (*defVal)(nil)
+	_ types.List   = (*defVal)(nil)
+	_ types.Set    = (*defVal)(nil)
 )
 
 type defKey string
@@ -27,7 +27,7 @@ func (d defKey) RUnlock()                              {}
 func (d defKey) Expire(_ time.Duration, _ func()) bool { return true }
 func (d defKey) TTL() time.Duration                    { return 0 }
 func (d defKey) Abort() bool                           { return true }
-func (d defKey) Val() vals.Value                       { return dv }
+func (d defKey) Val() types.Value                      { return dv }
 
 func (d defKey) Name() string { return string(d) }
 
@@ -72,11 +72,11 @@ func (d defVal) RPop() (string, bool)            { return "", false }
 func (d defVal) RPush(_ ...string) int64         { return 0 }
 
 // Sets implementation
-func (d defVal) SAdd(_ ...string) int64        { return 0 }
-func (d defVal) SCard() int64                  { return 0 }
-func (d defVal) SDiff(_ ...vals.Set) []string  { return empty }
-func (d defVal) SInter(_ ...vals.Set) []string { return empty }
-func (d defVal) SIsMember(_ string) bool       { return false }
-func (d defVal) SMembers() []string            { return empty }
-func (d defVal) SRem(_ ...string) int64        { return 0 }
-func (d defVal) SUnion(_ ...vals.Set) []string { return empty }
+func (d defVal) SAdd(_ ...string) int64         { return 0 }
+func (d defVal) SCard() int64                   { return 0 }
+func (d defVal) SDiff(_ ...types.Set) []string  { return empty }
+func (d defVal) SInter(_ ...types.Set) []string { return empty }
+func (d defVal) SIsMember(_ string) bool        { return false }
+func (d defVal) SMembers() []string             { return empty }
+func (d defVal) SRem(_ ...string) int64         { return 0 }
+func (d defVal) SUnion(_ ...types.Set) []string { return empty }

@@ -1,4 +1,4 @@
-package vals
+package types
 
 import (
 	"reflect"

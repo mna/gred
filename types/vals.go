@@ -1,8 +1,8 @@
-// Package vals implements the different value types offered by Redis.
+// Package types implements the different value types offered by Redis.
 //
-// Values are implemented with no knowledge of the concepts of Keys,
+// Types are implemented with no knowledge of the concepts of Keys,
 // Databases, network connections, or protocols.
-package vals
+package types
 
 // Value is the common interface implemented by all Redis values.
 type Value interface {

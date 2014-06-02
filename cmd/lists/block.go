@@ -5,13 +5,13 @@ import (
 
 	"github.com/PuerkitoBio/gred/cmd"
 	"github.com/PuerkitoBio/gred/srv"
-	"github.com/PuerkitoBio/gred/vals"
+	"github.com/PuerkitoBio/gred/types"
 )
 
 // unblock unblocks as many waiters as possible that are blocked waiting
 // for a value from this key. Both the DB and the key must be under an
 // exclusive lock.
-func unblock(db srv.DB, k srv.Key, v vals.List) int {
+func unblock(db srv.DB, k srv.Key, v types.List) int {
 	var cnt int
 
 	// While there are values...
@@ -56,7 +56,7 @@ func blockPop(db srv.DB, secs int64, rpop bool, lists ...string) ([]string, erro
 
 			// Get the value, if possible
 			v := k.Val()
-			if v, ok := v.(vals.List); ok {
+			if v, ok := v.(types.List); ok {
 				var val string
 				if rpop {
 					val, ok = v.RPop()

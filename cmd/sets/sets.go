@@ -3,7 +3,7 @@ package sets
 import (
 	"github.com/PuerkitoBio/gred/cmd"
 	"github.com/PuerkitoBio/gred/srv"
-	"github.com/PuerkitoBio/gred/vals"
+	"github.com/PuerkitoBio/gred/types"
 )
 
 func init() {
@@ -28,7 +28,7 @@ func saddFn(k srv.Key, args []string, ints []int64, floats []float64) (interface
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.Set); ok {
+	if v, ok := v.(types.Set); ok {
 		return v.SAdd(args[1:]...), nil
 	}
 	return nil, cmd.ErrInvalidValType
@@ -47,7 +47,7 @@ func scardFn(k srv.Key, args []string, ints []int64, floats []float64) (interfac
 	defer k.RUnlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.Set); ok {
+	if v, ok := v.(types.Set); ok {
 		return v.SCard(), nil
 	}
 	return nil, cmd.ErrInvalidValType
@@ -66,7 +66,7 @@ func sdiffFn(db srv.DB, args []string, ints []int64, floats []float64) (interfac
 
 	// Get and rlock all keys
 	keys := db.Keys()
-	diffSets := make([]vals.Set, 0, len(args))
+	diffSets := make([]types.Set, 0, len(args))
 	first := true
 	for _, nm := range args {
 		// Check if key exists
@@ -77,14 +77,14 @@ func sdiffFn(db srv.DB, args []string, ints []int64, floats []float64) (interfac
 
 			// Get the value, make sure it is a Set
 			v := k.Val()
-			if v, ok := v.(vals.Set); ok {
+			if v, ok := v.(types.Set); ok {
 				diffSets = append(diffSets, v)
 			} else {
 				return nil, cmd.ErrInvalidValType
 			}
 		} else if first {
 			// If first key does not exist, insert an empty set
-			diffSets = append(diffSets, vals.NewSet())
+			diffSets = append(diffSets, types.NewSet())
 		}
 		first = false
 	}
@@ -106,7 +106,7 @@ func sdiffstoreFn(db srv.DB, args []string, ints []int64, floats []float64) (int
 
 	keys := db.Keys()
 
-	diffSets := make([]vals.Set, 0, len(args)-1)
+	diffSets := make([]types.Set, 0, len(args)-1)
 	first := true
 	for _, nm := range args[1:] {
 		// Check if key exists
@@ -117,14 +117,14 @@ func sdiffstoreFn(db srv.DB, args []string, ints []int64, floats []float64) (int
 
 			// Get the value, make sure it is a Set
 			v := k.Val()
-			if v, ok := v.(vals.Set); ok {
+			if v, ok := v.(types.Set); ok {
 				diffSets = append(diffSets, v)
 			} else {
 				return nil, cmd.ErrInvalidValType
 			}
 		} else if first {
 			// If first key does not exist, insert an empty set
-			diffSets = append(diffSets, vals.NewSet())
+			diffSets = append(diffSets, types.NewSet())
 		}
 		first = false
 	}
@@ -138,7 +138,7 @@ func sdiffstoreFn(db srv.DB, args []string, ints []int64, floats []float64) (int
 		dst.Unlock()
 	}
 	// Then create the destination key
-	newSet := vals.NewSet()
+	newSet := types.NewSet()
 	dst := srv.NewKey(args[0], newSet)
 	keys[args[0]] = dst
 	return newSet.SAdd(val...), nil
@@ -157,7 +157,7 @@ func sismemberFn(k srv.Key, args []string, ints []int64, floats []float64) (inte
 	defer k.RUnlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.Set); ok {
+	if v, ok := v.(types.Set); ok {
 		return v.SIsMember(args[1]), nil
 	}
 	return nil, cmd.ErrInvalidValType
@@ -176,7 +176,7 @@ func smembersFn(k srv.Key, args []string, ints []int64, floats []float64) (inter
 	defer k.RUnlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.Set); ok {
+	if v, ok := v.(types.Set); ok {
 		return v.SMembers(), nil
 	}
 	return nil, cmd.ErrInvalidValType

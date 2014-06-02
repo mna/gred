@@ -1,4 +1,4 @@
-package vals
+package types
 
 // Set defines the methods required to implement a Set.
 type Set interface {

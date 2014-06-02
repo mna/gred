@@ -1,4 +1,4 @@
-package vals
+package types
 
 // List defines the methods required to implement a List.
 type List interface {

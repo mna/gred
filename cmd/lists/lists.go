@@ -5,7 +5,7 @@ import (
 
 	"github.com/PuerkitoBio/gred/cmd"
 	"github.com/PuerkitoBio/gred/srv"
-	"github.com/PuerkitoBio/gred/vals"
+	"github.com/PuerkitoBio/gred/types"
 )
 
 func init() {
@@ -92,7 +92,7 @@ func lindexFn(k srv.Key, args []string, ints []int64, floats []float64) (interfa
 	defer k.RUnlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.List); ok {
+	if v, ok := v.(types.List); ok {
 		val, ok := v.LIndex(ints[0])
 		if ok {
 			return val, nil
@@ -123,7 +123,7 @@ func linsertFn(k srv.Key, args []string, ints []int64, floats []float64) (interf
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.List); ok {
+	if v, ok := v.(types.List); ok {
 		if args[0] == "before" {
 			return v.LInsertBefore(args[2], args[3]), nil
 		}
@@ -145,7 +145,7 @@ func llenFn(k srv.Key, args []string, ints []int64, floats []float64) (interface
 	defer k.RUnlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.List); ok {
+	if v, ok := v.(types.List); ok {
 		return v.LLen(), nil
 	}
 	return nil, cmd.ErrInvalidValType
@@ -171,7 +171,7 @@ func lpopFn(db srv.DB, args []string, ints []int64, floats []float64) (interface
 
 	// Pop the value
 	v := k.Val()
-	if v, ok := v.(vals.List); ok {
+	if v, ok := v.(types.List); ok {
 		val, ok := v.LPop()
 		if ok {
 			// If the list is now empty, delete the key
@@ -202,7 +202,7 @@ func lpushFn(db srv.DB, args []string, ints []int64, floats []float64) (interfac
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.List); ok {
+	if v, ok := v.(types.List); ok {
 		val := v.LPush(args[1:]...)
 		// Unblock any waiters on this key
 		if unblock(db, k, v) > 0 {
@@ -235,7 +235,7 @@ func lpushxFn(k srv.Key, args []string, ints []int64, floats []float64) (interfa
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.List); ok {
+	if v, ok := v.(types.List); ok {
 		return v.LPush(args[1:]...), nil
 	}
 	return nil, cmd.ErrInvalidValType
@@ -255,7 +255,7 @@ func lrangeFn(k srv.Key, args []string, ints []int64, floats []float64) (interfa
 	defer k.RUnlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.List); ok {
+	if v, ok := v.(types.List); ok {
 		return v.LRange(ints[0], ints[1]), nil
 	}
 	return nil, cmd.ErrInvalidValType
@@ -282,7 +282,7 @@ func lremFn(db srv.DB, args []string, ints []int64, floats []float64) (interface
 
 	// Remove the value(s)
 	v := k.Val()
-	if v, ok := v.(vals.List); ok {
+	if v, ok := v.(types.List); ok {
 		val := v.LRem(ints[0], args[2])
 		if val > 0 {
 			// If the list is now empty, delete the key
@@ -313,7 +313,7 @@ func lsetFn(k srv.Key, args []string, ints []int64, floats []float64) (interface
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.List); ok {
+	if v, ok := v.(types.List); ok {
 		ok := v.LSet(ints[0], args[2])
 		if ok {
 			return cmd.OKVal, nil
@@ -344,7 +344,7 @@ func ltrimFn(db srv.DB, args []string, ints []int64, floats []float64) (interfac
 
 	// Trim the value
 	v := k.Val()
-	if v, ok := v.(vals.List); ok {
+	if v, ok := v.(types.List); ok {
 		v.LTrim(ints[0], ints[1])
 		// If the list is now empty, delete the key
 		if v.LLen() == 0 {
@@ -375,7 +375,7 @@ func rpopFn(db srv.DB, args []string, ints []int64, floats []float64) (interface
 
 	// Pop the value
 	v := k.Val()
-	if v, ok := v.(vals.List); ok {
+	if v, ok := v.(types.List); ok {
 		val, ok := v.RPop()
 		if ok {
 			// If the list is now empty, delete the key
@@ -420,7 +420,7 @@ func rpoplpushFn(db srv.DB, args []string, ints []int64, floats []float64) (inte
 		// Do not check if list is empty to delete it, since we push back
 		// to the same list.
 		v := src.Val()
-		if v, ok := v.(vals.List); ok {
+		if v, ok := v.(types.List); ok {
 			val, ok := v.RPop()
 			if ok {
 				v.LPush(val)
@@ -436,7 +436,7 @@ func rpoplpushFn(db srv.DB, args []string, ints []int64, floats []float64) (inte
 	// Exit early if the source key does not hold a List so that the dst
 	// is not created.
 	vs := src.Val()
-	vsrc, ok := vs.(vals.List)
+	vsrc, ok := vs.(types.List)
 	if !ok {
 		return nil, cmd.ErrInvalidValType
 	}
@@ -445,7 +445,7 @@ func rpoplpushFn(db srv.DB, args []string, ints []int64, floats []float64) (inte
 	dst, ok := keys[args[1]]
 	if !ok {
 		// Destination does not exist, create it
-		dst = srv.NewKey(args[1], vals.NewList())
+		dst = srv.NewKey(args[1], types.NewList())
 		keys[args[1]] = dst
 	}
 
@@ -453,7 +453,7 @@ func rpoplpushFn(db srv.DB, args []string, ints []int64, floats []float64) (inte
 	defer dst.Unlock()
 	// Get the dst value, make sure it is a List
 	vd := dst.Val()
-	vdst, ok := vd.(vals.List)
+	vdst, ok := vd.(types.List)
 	if !ok {
 		return nil, cmd.ErrInvalidValType
 	}
@@ -495,7 +495,7 @@ func rpushFn(db srv.DB, args []string, ints []int64, floats []float64) (interfac
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.List); ok {
+	if v, ok := v.(types.List); ok {
 		val := v.RPush(args[1:]...)
 		// Unblock any waiters on this key
 		if unblock(db, k, v) > 0 {
@@ -528,7 +528,7 @@ func rpushxFn(k srv.Key, args []string, ints []int64, floats []float64) (interfa
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.List); ok {
+	if v, ok := v.(types.List); ok {
 		return v.RPush(args[1:]...), nil
 	}
 	return nil, cmd.ErrInvalidValType

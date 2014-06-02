@@ -1,4 +1,4 @@
-package vals
+package types
 
 // Hash defines the methods required to implement the Hash Redis type.
 type Hash interface {

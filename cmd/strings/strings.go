@@ -3,7 +3,7 @@ package strings
 import (
 	"github.com/PuerkitoBio/gred/cmd"
 	"github.com/PuerkitoBio/gred/srv"
-	"github.com/PuerkitoBio/gred/vals"
+	"github.com/PuerkitoBio/gred/types"
 )
 
 func init() {
@@ -35,7 +35,7 @@ func appendFn(k srv.Key, args []string, ints []int64, floats []float64) (interfa
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.String); ok {
+	if v, ok := v.(types.String); ok {
 		return v.Append(args[1]), nil
 	}
 	return nil, cmd.ErrInvalidValType
@@ -54,7 +54,7 @@ func decrFn(k srv.Key, args []string, ints []int64, floats []float64) (interface
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.IncString); ok {
+	if v, ok := v.(types.IncString); ok {
 		val, ok := v.Decr()
 		if ok {
 			return val, nil
@@ -78,7 +78,7 @@ func decrbyFn(k srv.Key, args []string, ints []int64, floats []float64) (interfa
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.IncString); ok {
+	if v, ok := v.(types.IncString); ok {
 		val, ok := v.DecrBy(ints[0])
 		if ok {
 			return val, nil
@@ -105,7 +105,7 @@ func getFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{
 	defer k.RUnlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.String); ok {
+	if v, ok := v.(types.String); ok {
 		return v.Get(), nil
 	}
 	return nil, cmd.ErrInvalidValType
@@ -125,7 +125,7 @@ func getrangeFn(k srv.Key, args []string, ints []int64, floats []float64) (inter
 	defer k.RUnlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.String); ok {
+	if v, ok := v.(types.String); ok {
 		return v.GetRange(ints[0], ints[1]), nil
 	}
 	return nil, cmd.ErrInvalidValType
@@ -144,7 +144,7 @@ func getsetFn(k srv.Key, args []string, ints []int64, floats []float64) (interfa
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.String); ok {
+	if v, ok := v.(types.String); ok {
 		k.Abort()
 		return v.GetSet(args[1]), nil
 	}
@@ -164,7 +164,7 @@ func incrFn(k srv.Key, args []string, ints []int64, floats []float64) (interface
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.IncString); ok {
+	if v, ok := v.(types.IncString); ok {
 		val, ok := v.Incr()
 		if ok {
 			return val, nil
@@ -188,7 +188,7 @@ func incrbyFn(k srv.Key, args []string, ints []int64, floats []float64) (interfa
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.IncString); ok {
+	if v, ok := v.(types.IncString); ok {
 		val, ok := v.IncrBy(ints[0])
 		if ok {
 			return val, nil
@@ -212,7 +212,7 @@ func incrbyfloatFn(k srv.Key, args []string, ints []int64, floats []float64) (in
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.IncString); ok {
+	if v, ok := v.(types.IncString); ok {
 		val, ok := v.IncrByFloat(floats[0])
 		if ok {
 			return val, nil
@@ -236,7 +236,7 @@ func setFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.String); ok {
+	if v, ok := v.(types.String); ok {
 		k.Abort()
 		v.Set(args[1])
 		return cmd.OKVal, nil
@@ -264,7 +264,7 @@ func setrangeFn(k srv.Key, args []string, ints []int64, floats []float64) (inter
 	defer k.Unlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.String); ok {
+	if v, ok := v.(types.String); ok {
 		return v.SetRange(ints[0], args[2]), nil
 	}
 	return nil, cmd.ErrInvalidValType
@@ -283,7 +283,7 @@ func strlenFn(k srv.Key, args []string, ints []int64, floats []float64) (interfa
 	defer k.RUnlock()
 
 	v := k.Val()
-	if v, ok := v.(vals.String); ok {
+	if v, ok := v.(types.String); ok {
 		return v.StrLen(), nil
 	}
 	return nil, cmd.ErrInvalidValType

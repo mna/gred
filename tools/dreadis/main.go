@@ -61,7 +61,7 @@ value is an array of arguments to pass to the command.
 Array values on the top-level array hold the same kind of object values,
 each representing a command to execute, but those commands are pipelined.
 
-Special placeholders %d and %q can be used in the string arguments. Those
+Special placeholders can be used in the string arguments. Those
 placeholders have the following meaning:
 
     %c : replaced with the client id.
@@ -70,10 +70,10 @@ placeholders have the following meaning:
 
 Results
 
-Each client stores the replies from the server, and since commands and clients
-are created and executed in a well-defined order, results can be deterministic
-and so can be validated against a reference implementation (i.e. against
-the official Redis server).
+Each client stores the replies from the server, and since clients and commands
+within a client are created and executed in a well-defined order, results can
+be deterministic and so can be validated against a reference implementation
+(i.e. against the official Redis server).
 
 There are caveats to be aware of when comparing results. When the -t flag is set,
 commands may stop at an arbitrary position. When dynamic placeholders %u or %d
