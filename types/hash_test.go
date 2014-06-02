@@ -13,7 +13,7 @@ var hcase = hash{
 
 var hempty = hash{}
 
-func clone(h hash) hash {
+func cloneHash(h hash) hash {
 	h2 := hash{}
 	for k, v := range h {
 		h2[k] = v
@@ -29,7 +29,7 @@ func TestHashType(t *testing.T) {
 
 func TestHashHDel(t *testing.T) {
 	// copy the hcase
-	hdelCase := clone(hcase)
+	hdelCase := cloneHash(hcase)
 	cases := []struct {
 		h      Hash
 		fields []string
@@ -163,8 +163,8 @@ func TestHashHMGet(t *testing.T) {
 }
 
 func TestHashHMSet(t *testing.T) {
-	hmset := clone(hcase)
-	hmempty := clone(hempty)
+	hmset := cloneHash(hcase)
+	hmempty := cloneHash(hempty)
 	cases := []struct {
 		h      Hash
 		fields []string
@@ -183,8 +183,8 @@ func TestHashHMSet(t *testing.T) {
 }
 
 func TestHashHSet(t *testing.T) {
-	hset := clone(hcase)
-	hempty := clone(hempty)
+	hset := cloneHash(hcase)
+	hempty := cloneHash(hempty)
 	cases := []struct {
 		h     Hash
 		field string
@@ -211,8 +211,8 @@ func TestHashHSet(t *testing.T) {
 }
 
 func TestHashHSetNx(t *testing.T) {
-	hset := clone(hcase)
-	hempty := clone(hempty)
+	hset := cloneHash(hcase)
+	hempty := cloneHash(hempty)
 	cases := []struct {
 		h     Hash
 		field string
