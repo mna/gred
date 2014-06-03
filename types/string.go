@@ -53,8 +53,11 @@ func (s *stringval) GetRange(start, end int64) string {
 	}
 	if end < 0 {
 		end = l + end
+		if end < 0 {
+			end = start
+		}
 	}
-	if end < 0 || end < start {
+	if end < start {
 		return ""
 	}
 	if end >= l {
