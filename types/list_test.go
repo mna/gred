@@ -5,7 +5,56 @@ import (
 	"testing"
 )
 
-func TestLPush(t *testing.T) {
+func TestListLIndex(t *testing.T) {
+	cases := []struct {
+		l   []string
+		ix  int64
+		exp string
+		ok  bool
+	}{
+		0: {nil, 0, "", false},
+		1: {[]string{}, 0, "", false},
+		2: {[]string{"a", "b", "c"}, 0, "a", true},
+		3: {[]string{"a", "b", "c"}, 1, "b", true},
+		4: {[]string{"a", "b", "c"}, 2, "c", true},
+		5: {[]string{"a", "b", "c"}, 3, "", false},
+		6: {[]string{"a", "b", "c"}, -1, "c", true},
+		7: {[]string{"a", "b", "c"}, -2, "b", true},
+		8: {[]string{"a", "b", "c"}, -3, "a", true},
+		9: {[]string{"a", "b", "c"}, -4, "", false},
+	}
+	for i, c := range cases {
+		l := list(c.l)
+		got, ok := l.LIndex(c.ix)
+		if got != c.exp {
+			t.Errorf("%d: expected %q, got %q", i, c.exp, got)
+		}
+		if ok != c.ok {
+			t.Errorf("%d: expected %t, got %t", i, c.ok, ok)
+		}
+	}
+}
+
+func TestListLLen(t *testing.T) {
+	cases := []struct {
+		l   []string
+		exp int64
+	}{
+		0: {nil, 0},
+		1: {[]string{}, 0},
+		2: {[]string{"a"}, 1},
+		3: {[]string{"a", "b", "c"}, 3},
+	}
+	for i, c := range cases {
+		l := list(c.l)
+		got := l.LLen()
+		if got != c.exp {
+			t.Errorf("%d: expected %d, got %d", i, c.exp, got)
+		}
+	}
+}
+
+func TestListLPush(t *testing.T) {
 	cases := []struct {
 		l    []string
 		vals []string
@@ -27,11 +76,10 @@ func TestLPush(t *testing.T) {
 		if !reflect.DeepEqual([]string(l), c.exp) {
 			t.Errorf("%d: expected %v, got %v", i, c.exp, l)
 		}
-		t.Logf("%d: %v", i, l)
 	}
 }
 
-func TestLInsertBefore(t *testing.T) {
+func TestListLInsertBefore(t *testing.T) {
 	cases := []struct {
 		l        []string
 		piv, val string
@@ -56,11 +104,10 @@ func TestLInsertBefore(t *testing.T) {
 				t.Errorf("%d: value %q should be at index %d, got %q", i, c.val, c.at, l[c.at])
 			}
 		}
-		t.Logf("%d: %v", i, l)
 	}
 }
 
-func TestLInsertAfter(t *testing.T) {
+func TestListLInsertAfter(t *testing.T) {
 	cases := []struct {
 		l        []string
 		piv, val string
@@ -85,11 +132,39 @@ func TestLInsertAfter(t *testing.T) {
 				t.Errorf("%d: value %q should be at index %d, got %q", i, c.val, c.at, l[c.at])
 			}
 		}
-		t.Logf("%d: %v", i, l)
 	}
 }
 
-func TestLRange(t *testing.T) {
+func TestListLPop(t *testing.T) {
+	cases := []struct {
+		l   []string
+		exp string
+		ok  bool
+	}{
+		0: {nil, "", false},
+		1: {[]string{}, "", false},
+		2: {[]string{"a"}, "a", true},
+		3: {[]string{"a", "b", "c"}, "a", true},
+	}
+	for i, c := range cases {
+		l := list(c.l)
+		orilen := len(c.l)
+		got, ok := l.LPop()
+		if got != c.exp {
+			t.Errorf("%d: expected %q, got %q", i, c.exp, got)
+		}
+		if ok != c.ok {
+			t.Errorf("%d: expected %t, got %t", i, c.ok, ok)
+		}
+		if c.ok {
+			if ln := l.LLen(); ln != int64(orilen-1) {
+				t.Errorf("%d: expected length to be %d, got %d", i, orilen-1, ln)
+			}
+		}
+	}
+}
+
+func TestListLRange(t *testing.T) {
 	cases := []struct {
 		l           []string
 		start, stop int64
@@ -112,11 +187,10 @@ func TestLRange(t *testing.T) {
 		if !reflect.DeepEqual(got, c.exp) {
 			t.Errorf("%d: expected %v, got %v", i, c.exp, got)
 		}
-		t.Logf("%d: %v", i, got)
 	}
 }
 
-func TestLRem(t *testing.T) {
+func TestListLRem(t *testing.T) {
 	cases := []struct {
 		l      []string
 		val    string
@@ -144,11 +218,10 @@ func TestLRem(t *testing.T) {
 		if !reflect.DeepEqual([]string(l), c.exp) {
 			t.Errorf("%d: expected %v, got %v", i, c.exp, l)
 		}
-		t.Logf("%d: %v", i, l)
 	}
 }
 
-func TestLSet(t *testing.T) {
+func TestListLSet(t *testing.T) {
 	cases := []struct {
 		l   []string
 		val string
@@ -177,11 +250,10 @@ func TestLSet(t *testing.T) {
 		if !reflect.DeepEqual([]string(l), c.exp) {
 			t.Errorf("%d: expected %v, got %v", i, c.exp, l)
 		}
-		t.Logf("%d: %v", i, l)
 	}
 }
 
-func TestLTrim(t *testing.T) {
+func TestListLTrim(t *testing.T) {
 	cases := []struct {
 		l           []string
 		start, stop int64
@@ -207,6 +279,67 @@ func TestLTrim(t *testing.T) {
 		if !reflect.DeepEqual([]string(l), c.exp) {
 			t.Errorf("%d: expected %v, got %v", i, c.exp, l)
 		}
-		t.Logf("%d: %v", i, l)
+	}
+}
+
+func TestListRPush(t *testing.T) {
+	cases := []struct {
+		l    []string
+		vals []string
+		exp  []string
+	}{
+		0: {nil, nil, nil},
+		1: {[]string{}, []string{}, []string{}},
+		2: {[]string{}, []string{"a"}, []string{"a"}},
+		3: {[]string{}, []string{"a", "b", "c"}, []string{"a", "b", "c"}},
+		4: {[]string{"a", "b"}, []string{"x", "y", "z"}, []string{"a", "b", "x", "y", "z"}},
+		5: {[]string{}, []string{"c", "b", "a"}, []string{"c", "b", "a"}},
+	}
+	for i, c := range cases {
+		l := list(c.l)
+		got := l.RPush(c.vals...)
+		if got != int64(len(c.exp)) {
+			t.Errorf("%d: expected length of %d, got %d", i, len(c.exp), got)
+		}
+		if !reflect.DeepEqual([]string(l), c.exp) {
+			t.Errorf("%d: expected %v, got %v", i, c.exp, l)
+		}
+	}
+}
+
+func TestListRPop(t *testing.T) {
+	cases := []struct {
+		l   []string
+		exp string
+		ok  bool
+	}{
+		0: {nil, "", false},
+		1: {[]string{}, "", false},
+		2: {[]string{"a"}, "a", true},
+		3: {[]string{"a", "b", "c"}, "c", true},
+	}
+	for i, c := range cases {
+		l := list(c.l)
+		orilen := len(c.l)
+		got, ok := l.RPop()
+		if got != c.exp {
+			t.Errorf("%d: expected %q, got %q", i, c.exp, got)
+		}
+		if ok != c.ok {
+			t.Errorf("%d: expected %t, got %t", i, c.ok, ok)
+		}
+		if c.ok {
+			if ln := l.LLen(); ln != int64(orilen-1) {
+				t.Errorf("%d: expected length to be %d, got %d", i, orilen-1, ln)
+			}
+		}
+	}
+}
+
+func TestListType(t *testing.T) {
+	l := NewList()
+	tp := l.Type()
+	if tp != "list" {
+		t.Errorf("expected %q, got %q", "list", tp)
 	}
 }
