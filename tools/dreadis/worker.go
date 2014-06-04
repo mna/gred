@@ -115,6 +115,7 @@ loop:
 		}
 	}
 
+	w.conn.Close()
 	wg.Done()
 }
 

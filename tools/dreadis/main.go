@@ -27,6 +27,7 @@ dreadis supports the following flags:
 
   -net   : network type, defaults to "tcp".
   -addr  : network address, defaults to ":6379".
+  -flush : flush the DB before running the test. Issues a FLUSHALL command.
 
 If -n is 0 (its default) and -t is specified, each client will iterate over its source file
 for this duration. If both -n and -t are specified, it will stop at the first threshold
@@ -100,6 +101,8 @@ import (
 	"sync"
 	"text/template"
 	"time"
+
+	"github.com/garyburd/redigo/redis"
 )
 
 // The command-line flags
@@ -110,8 +113,9 @@ var (
 	output     = flag.String("o", "", "output file to log server replies")
 	format     = flag.String("f", "stats", "format of the server replies")
 
-	net  = flag.String("net", "tcp", "network type")
-	addr = flag.String("addr", ":6379", "network address")
+	net   = flag.String("net", "tcp", "network type")
+	addr  = flag.String("addr", ":6379", "network address")
+	flush = flag.Bool("flush", false, "flush the database before execution")
 )
 
 // Command-line usage of the tool
@@ -135,6 +139,8 @@ Options:
             Defaults to "tcp".
   -addr     Network address to use to connect to the server.
             Defaults to ":6379".
+  -flush    Flushes the database before execution. Issues a 
+            FLUSHALL command.
 
   The following struct fields are available for the format (-f)
   template, which must use a {{range .Results}}...{{end}} action to
@@ -213,6 +219,13 @@ func main() {
 		printMessage(err.Error(), 3)
 	}
 
+	if *flush {
+		err := flushAll(*net, *addr)
+		if err != nil {
+			printMessage(err.Error(), 3)
+		}
+	}
+
 	// Start the workers
 	begin := time.Now()
 	close(start)
@@ -244,6 +257,16 @@ func main() {
 		}
 		printResults(ex, tpl, *output)
 	}
+}
+
+func flushAll(net, addr string) error {
+	conn, err := redis.Dial(net, addr)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	_, err = conn.Do("FLUSHALL")
+	return err
 }
 
 func printResults(ex *execInfo, tpl *template.Template, outFile string) {
