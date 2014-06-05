@@ -61,6 +61,7 @@ type DB interface {
 	Exists(string) bool
 	Expire(string, int64, func()) bool
 	ExpireAt(string, int64, func()) bool
+	FlushDB()
 	Persist(string) bool
 	PExpire(string, int64, func()) bool
 	PExpireAt(string, int64, func()) bool
@@ -166,6 +167,10 @@ func (d *db) Expire(name string, secs int64, fn func()) bool {
 func (d *db) ExpireAt(name string, uxts int64, fn func()) bool {
 	secs := uxts - time.Now().Unix()
 	return d.expireDuration(name, time.Duration(secs)*time.Second, fn)
+}
+
+func (d *db) FlushDB() {
+	d.keys = make(map[string]Key)
 }
 
 func (d *db) PExpire(name string, ms int64, fn func()) bool {

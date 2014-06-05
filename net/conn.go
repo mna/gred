@@ -13,10 +13,6 @@ import (
 	"github.com/PuerkitoBio/gred/srv"
 )
 
-var (
-	defdb = srv.NewDB(0)
-)
-
 // Conn defines the methods required to handle a connection to the
 // server.
 type Conn interface {
@@ -27,7 +23,7 @@ type Conn interface {
 // conn represents a network connection to the server.
 type conn struct {
 	net.Conn
-	db srv.DB
+	dbix int
 }
 
 // NewConn creates a new Conn for the underlying net.Conn network
@@ -35,7 +31,6 @@ type conn struct {
 func NewConn(c net.Conn) Conn {
 	conn := &conn{
 		Conn: c,
-		db:   defdb,
 	}
 	return conn
 }
@@ -72,7 +67,12 @@ func (c *conn) Handle() error {
 			} else {
 				switch cd := cd.(type) {
 				case cmd.DBCmd:
-					res, rerr = cd.ExecWithDB(c.db, args, ints, floats)
+					// Get the connection's current database
+					db, ok := srv.DefaultServer.GetDB(c.dbix)
+					if !ok {
+						panic(fmt.Sprintf("invalid database index: %d", c.dbix))
+					}
+					res, rerr = cd.ExecWithDB(db, args, ints, floats)
 				case cmd.SrvCmd:
 					res, rerr = cd.Exec(args, ints, floats)
 				default:

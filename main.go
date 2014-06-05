@@ -14,7 +14,6 @@ import (
 	_ "github.com/PuerkitoBio/gred/cmd/sets"
 	_ "github.com/PuerkitoBio/gred/cmd/strings"
 	gnet "github.com/PuerkitoBio/gred/net"
-	"github.com/davecheney/profile"
 	"github.com/golang/glog"
 )
 
@@ -30,7 +29,7 @@ const (
 )
 
 func main() {
-	defer profile.Start(profile.CPUProfile).Stop()
+	//defer profile.Start(profile.CPUProfile).Stop()
 
 	flag.Parse()
 	defer glog.Flush()
