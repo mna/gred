@@ -7,7 +7,7 @@
 Install [go][], then run:
 
 ```
-$ go get -u github.com/PuerkitoBio/gred
+$ go get -u github.com/PuerkitoBio/gred/...
 ```
 
 ## Usage
