@@ -6,19 +6,25 @@
 
 Install [go][], then run:
 
-`$ go get -u github.com/PuerkitoBio/gred`
+```
+$ go get -u github.com/PuerkitoBio/gred
+```
 
 ## Usage
 
 `gred` uses the Redis Serialization Protocol ([RESP][]), so it is a drop-in replacement for Redis. Provided the `$GOPATH/bin` is in your `$PATH`, run:
 
-`$ gred`
+```
+$ gred
+```
 
 to start the server on the default port 6379. It uses [glog][] for logging, so the glog flags are available. Type `gred -h` to get the list of options.
 
 Once gred is running, and provided you have a working Redis installation, you can start the redis client to send commands to the server:
 
-`$ redis-cli`
+```
+$ redis-cli
+```
 
 Since gred uses the RESP, all Redis clients should be automatically supported (such as [redigo][]).
 
