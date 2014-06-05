@@ -36,3 +36,4 @@ The [BSD 3-Clause license][bsd]. See the LICENSE file for details.
 [Redis]: http://redis.io
 [redigo]: https://github.com/garyburd/redigo
 [bsd]: http://opensource.org/licenses/BSD-3-Clause
+[features]: https://github.com/PuerkitoBio/gred/wiki/Features
