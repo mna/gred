@@ -30,7 +30,7 @@ Since gred uses the RESP, all Redis clients should be automatically supported (s
 
 ## dreadis
 
-Under `tools/` is `dreadis`, an automated Redis client. Using JSON command files, this command-line tool can stress-test or validate the correctness of the server. See its documentation for more details. Some command files exist under the `fixtures/` directory.
+Under `tools/` is `dreadis`, an automated Redis client. Using JSON command files, this command-line tool can stress-test or validate the correctness of the server. See its [documentation][dreadis] for more details. Some command files exist under the `fixtures/` directory.
 
 ## License
 
@@ -43,3 +43,4 @@ The [BSD 3-Clause license][bsd]. See the LICENSE file for details.
 [redigo]: https://github.com/garyburd/redigo
 [bsd]: http://opensource.org/licenses/BSD-3-Clause
 [features]: https://github.com/PuerkitoBio/gred/wiki/Features
+[dreadis]: http://godoc.org/github.com/PuerkitoBio/gred/tools/dreadis
