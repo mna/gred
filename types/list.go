@@ -33,6 +33,9 @@ func NewList() List {
 	return &l
 }
 
+// TODO : Must set zero value to elements of a slice before slicing
+// them out (i.e. before `sl = sl[1:]`). Will leak memory otherwise.
+
 // Type returns the type of this value, which is "list".
 func (l list) Type() string {
 	return "list"
