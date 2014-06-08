@@ -59,6 +59,10 @@ var (
 	// ErrQuit is a sentinel error value to indicate that the network connection
 	// should be closed, as requested by the client.
 	ErrQuit = errors.New("quit")
+
+	// ErrInvalidDBIndex is returned when a DB index outside the bounds of
+	// available DBs is requested.
+	ErrInvalidDBIndex = errors.New("ERR invalid DB index")
 )
 
 // Commands holds the list of registered commands.
@@ -110,6 +114,35 @@ type srvCmd struct {
 // Exec executes the server command with the provided arguments.
 func (s *srvCmd) Exec(args []string, ints []int64, floats []float64) (interface{}, error) {
 	return s.fn(args, ints, floats)
+}
+
+// ConnFn defines the function signature required for the ConnCmd implementation.
+type ConnFn func(srv.Conn, []string, []int64, []float64) (interface{}, error)
+
+// ConnCmd defines the methods required to implement a connection command.
+type ConnCmd interface {
+	Cmd
+	ExecWithConn(srv.Conn, []string, []int64, []float64) (interface{}, error)
+}
+
+// NewConnCmd creates a new ConnCmd value with the specified argument definition
+// and execution function.
+func NewConnCmd(arg *ArgDef, fn ConnFn) ConnCmd {
+	return &connCmd{
+		arg,
+		fn,
+	}
+}
+
+// connCmd is the interal implementation of a ConnCmd.
+type connCmd struct {
+	*ArgDef
+	fn ConnFn
+}
+
+// Exec executes the connection command with the provided arguments.
+func (c *connCmd) ExecWithConn(conn srv.Conn, args []string, ints []int64, floats []float64) (interface{}, error) {
+	return c.fn(conn, args, ints, floats)
 }
 
 // DBCmd defines the methods required to implement a database command.

@@ -11,6 +11,7 @@ import (
 	_ "github.com/PuerkitoBio/gred/cmd/hashes"
 	_ "github.com/PuerkitoBio/gred/cmd/keys"
 	_ "github.com/PuerkitoBio/gred/cmd/lists"
+	_ "github.com/PuerkitoBio/gred/cmd/server"
 	_ "github.com/PuerkitoBio/gred/cmd/sets"
 	_ "github.com/PuerkitoBio/gred/cmd/strings"
 	gnet "github.com/PuerkitoBio/gred/net"
@@ -67,7 +68,7 @@ func main() {
 		// The loop then returns to accepting, so that
 		// multiple connections may be served concurrently.
 		go func(c net.Conn) {
-			conn := gnet.NewConn(c)
+			conn := gnet.NewNetConn(c)
 			err := conn.Handle()
 			if err != nil {
 				glog.Errorf("handle connection: %s", err)

@@ -23,21 +23,19 @@ var DefaultServer Server
 // server is the internal implementation of a Server.
 type server struct {
 	sync.RWMutex
-	dbs map[int]DB
+	dbs []DB
 }
 
 func init() {
 	// TODO : Read configuration
 	DefaultServer = &server{
-		dbs: make(map[int]DB, maxDBs),
+		dbs: make([]DB, maxDBs),
 	}
 }
 
 // FlushAll clears the keys from all databases.
 func (s *server) FlushAll() {
-	s.Lock()
-	defer s.Unlock()
-	s.dbs = make(map[int]DB, maxDBs)
+	s.dbs = make([]DB, maxDBs)
 }
 
 // GetDB returns the database identified by its index.
@@ -46,10 +44,8 @@ func (s *server) GetDB(ix int) (DB, bool) {
 		return nil, false
 	}
 
-	s.RLock()
-	defer s.RUnlock()
-	db, ok := s.dbs[ix]
-	if !ok {
+	db := s.dbs[ix]
+	if db == nil {
 		db = NewDB(ix)
 		s.dbs[ix] = db
 	}

@@ -13,30 +13,37 @@ import (
 	"github.com/PuerkitoBio/gred/srv"
 )
 
-// Conn defines the methods required to handle a connection to the
+// NetConn defines the methods required to handle a network connection to the
 // server.
-type Conn interface {
+type NetConn interface {
 	io.ReadWriter
 	Handle() error
 }
 
-// conn represents a network connection to the server.
-type conn struct {
+var _ NetConn = (*netConn)(nil)
+var _ srv.Conn = (*netConn)(nil)
+
+// netConn represents a network connection to the server.
+type netConn struct {
 	net.Conn
 	dbix int
 }
 
-// NewConn creates a new Conn for the underlying net.Conn network
+// NewNetConn creates a new NetConn for the underlying net.Conn network
 // connection.
-func NewConn(c net.Conn) Conn {
-	conn := &conn{
+func NewNetConn(c net.Conn) NetConn {
+	conn := &netConn{
 		Conn: c,
 	}
 	return conn
 }
 
+func (c *netConn) Select(ix int) {
+	c.dbix = ix
+}
+
 // Handle handles a connection to the server, and processes its requests.
-func (c *conn) Handle() error {
+func (c *netConn) Handle() error {
 	defer c.Close()
 
 	br := bufio.NewReader(c)
@@ -75,6 +82,8 @@ func (c *conn) Handle() error {
 					res, rerr = cd.ExecWithDB(db, args, ints, floats)
 				case cmd.SrvCmd:
 					res, rerr = cd.Exec(args, ints, floats)
+				case cmd.ConnCmd:
+					res, rerr = cd.ExecWithConn(c, args, ints, floats)
 				default:
 					panic(fmt.Sprintf("unsupported command type: %T", cd))
 				}
@@ -93,7 +102,7 @@ func (c *conn) Handle() error {
 }
 
 // writeResponse writes the response to the network connection.
-func (c *conn) writeResponse(res interface{}, err error) error {
+func (c *netConn) writeResponse(res interface{}, err error) error {
 	if err != nil {
 		return resp.Encode(c, resp.Error(err.Error()))
 	}
