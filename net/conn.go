@@ -38,6 +38,7 @@ func NewNetConn(c net.Conn) NetConn {
 	return conn
 }
 
+// Select sets the connection's DB index to ix.
 func (c *netConn) Select(ix int) {
 	c.dbix = ix
 }
