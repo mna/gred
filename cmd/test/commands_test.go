@@ -6,6 +6,7 @@ import (
 
 	"github.com/PuerkitoBio/gred/cmd"
 	_ "github.com/PuerkitoBio/gred/cmd/hashes"
+	_ "github.com/PuerkitoBio/gred/cmd/keys"
 	_ "github.com/PuerkitoBio/gred/cmd/lists"
 	_ "github.com/PuerkitoBio/gred/cmd/sets"
 	_ "github.com/PuerkitoBio/gred/cmd/strings"
@@ -25,7 +26,7 @@ func TestCommand(t *testing.T) {
 		{"lpush", []string{"l", "v1"}, int64(1), nil},
 		{"sadd", []string{"t", "v1"}, int64(1), nil},
 
-		// Then test all commands
+		// Then test strings commands
 		{"append", []string{"k", "a"}, int64(1), nil},
 		{"append", []string{"k", "bcd"}, int64(4), nil},
 		{"append", []string{"t", "bcd"}, nil, cmd.ErrInvalidValType},
@@ -39,7 +40,31 @@ func TestCommand(t *testing.T) {
 		{"getrange", []string{"l", "10", "40"}, nil, cmd.ErrInvalidValType},
 		{"getset", []string{"k", "efg"}, "abcd", nil},
 		{"getset", []string{"z", "efg"}, "", nil},
+		{"del", []string{"z"}, int64(1), nil},
 		{"getset", []string{"h", "efg"}, nil, cmd.ErrInvalidValType},
+		{"set", []string{"h", "efg"}, nil, cmd.ErrInvalidValType},
+		{"setrange", []string{"k", "1", "zzzz"}, int64(5), nil},
+		{"setrange", []string{"k", "10", "aa"}, int64(12), nil},
+		{"setrange", []string{"t", "10", "aa"}, nil, cmd.ErrInvalidValType},
+		{"strlen", []string{"k"}, int64(12), nil},
+		{"strlen", []string{"z"}, int64(0), nil},
+		{"strlen", []string{"l"}, nil, cmd.ErrInvalidValType},
+		{"del", []string{"k"}, int64(1), nil},
+		{"incr", []string{"k"}, int64(1), nil},
+		{"incr", []string{"k"}, int64(2), nil},
+		{"set", []string{"z", "not an int"}, cmd.OKVal, nil},
+		{"incr", []string{"z"}, nil, cmd.ErrNotInteger},
+		{"incr", []string{"t"}, nil, cmd.ErrInvalidValType},
+		{"incrby", []string{"k", "3"}, int64(5), nil},
+		{"incrby", []string{"k", "-12"}, int64(-7), nil},
+		{"del", []string{"k"}, int64(1), nil},
+		{"incrby", []string{"k", "-12"}, int64(-12), nil},
+		{"incrby", []string{"l", "-12"}, nil, cmd.ErrInvalidValType},
+		{"incrbyfloat", []string{"k", "3.1"}, "-8.9", nil},
+		{"incrbyfloat", []string{"k", "-0.2"}, "-9.1", nil},
+		{"del", []string{"k"}, int64(1), nil},
+		{"incrbyfloat", []string{"k", "0.2"}, "0.2", nil},
+		{"incrbyfloat", []string{"l", "0.2"}, nil, cmd.ErrInvalidValType},
 	}
 
 	var got interface{}
