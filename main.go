@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net"
 
@@ -18,15 +17,17 @@ import (
 	"github.com/golang/glog"
 )
 
-// TODO : For optimization: http://confreaks.com/videos/3420-gophercon2014-building-high-performance-systems-in-go-what-s-new-and-best-practices
+// TODO : For optimization ideas: http://confreaks.com/videos/3420-gophercon2014-building-high-performance-systems-in-go-what-s-new-and-best-practices
 
 const (
-	// port is the port to listen to
-	port = 6379
-
 	// maxSuccessiveConnErr is the maximum number of successive connection
 	// errors before the server is stopped.
 	maxSuccessiveConnErr = 3
+)
+
+var (
+	addr  = flag.String("addr", ":6379", "network address to listen to")
+	iface = flag.String("net", "tcp", "network interface to use")
 )
 
 func main() {
@@ -42,13 +43,12 @@ func main() {
 		}
 	}
 
-	// Listen on TCP.
-	l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	l, err := net.Listen(*iface, *addr)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer l.Close()
-	glog.V(1).Infof("listening on port %d", port)
+	glog.V(1).Infof("listening on %s://%s", *iface, *addr)
 
 	var errcnt int
 	for {

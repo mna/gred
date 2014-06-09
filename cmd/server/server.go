@@ -7,6 +7,7 @@ import (
 
 func init() {
 	cmd.Register("flushdb", flushdb)
+	cmd.Register("flushall", flushall)
 }
 
 var flushdb = cmd.NewDBCmd(
@@ -21,5 +22,20 @@ func flushdbFn(db srv.DB, args []string, ints []int64, floats []float64) (interf
 	defer db.Unlock()
 
 	db.FlushDB()
+	return cmd.OKVal, nil
+}
+
+var flushall = cmd.NewSrvCmd(
+	&cmd.ArgDef{
+		MinArgs: 0,
+		MaxArgs: 0,
+	},
+	flushallFn)
+
+func flushallFn(args []string, ints []int64, floats []float64) (interface{}, error) {
+	srv.DefaultServer.Lock()
+	defer srv.DefaultServer.Unlock()
+
+	srv.DefaultServer.FlushAll()
 	return cmd.OKVal, nil
 }

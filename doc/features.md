@@ -211,7 +211,7 @@ The commands are listed by category, as it is on the [redis website][redis].
 | ECHO             | √      | |
 | PING             | √      | |
 | QUIT             | √      | |
-| SELECT           | ø      | |
+| SELECT           | √      | |
 
 ### Server
 
@@ -231,8 +231,8 @@ The commands are listed by category, as it is on the [redis website][redis].
 | DBSIZE           | ø      | |
 | DEBUG OBJECT     | ø      | |
 | DEBUG SEGFAULT   | ø      | |
-| FLUSHALL         | ø      | |
-| FLUSHDB          | ø      | |
+| FLUSHALL         | √      | |
+| FLUSHDB          | √      | |
 | INFO             | ø      | |
 | LASTSAVE         | ø      | |
 | MONITOR          | ø      | |

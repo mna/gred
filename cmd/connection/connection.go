@@ -48,8 +48,8 @@ var selct = cmd.NewConnCmd(
 	selctFn)
 
 func selctFn(conn srv.Conn, args []string, ints []int64, floats []float64) (interface{}, error) {
-	srv.DefaultServer.RLock()
-	defer srv.DefaultServer.RUnlock()
+	srv.DefaultServer.Lock()
+	defer srv.DefaultServer.Unlock()
 
 	_, ok := srv.DefaultServer.GetDB(int(ints[0]))
 	if !ok {
