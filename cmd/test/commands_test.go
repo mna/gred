@@ -26,7 +26,7 @@ func TestCommand(t *testing.T) {
 		{"lpush", []string{"l", "v1"}, int64(1), nil},
 		{"sadd", []string{"t", "v1"}, int64(1), nil},
 
-		// Then test strings commands
+		// Strings
 		{"append", []string{"k", "a"}, int64(1), nil},
 		{"append", []string{"k", "bcd"}, int64(4), nil},
 		{"append", []string{"t", "bcd"}, nil, cmd.ErrInvalidValType},
@@ -65,6 +65,69 @@ func TestCommand(t *testing.T) {
 		{"del", []string{"k"}, int64(1), nil},
 		{"incrbyfloat", []string{"k", "0.2"}, "0.2", nil},
 		{"incrbyfloat", []string{"l", "0.2"}, nil, cmd.ErrInvalidValType},
+
+		// Hashes
+		{"del", []string{"k"}, int64(1), nil},
+		{"del", []string{"z"}, int64(1), nil},
+		{"hset", []string{"k", "f1", "v1"}, true, nil},
+		{"hset", []string{"k", "f2", "v2"}, true, nil},
+		{"hdel", []string{"z", "f1"}, int64(0), nil},
+		{"hdel", []string{"k", "f1", "f1", "f2", "f3"}, int64(2), nil},
+		{"hdel", []string{"s", "f1"}, nil, cmd.ErrInvalidValType},
+		{"hset", []string{"k", "f1", "v1"}, true, nil},
+		{"hset", []string{"k", "f2", "v2"}, true, nil},
+		{"hexists", []string{"z", "f1"}, false, nil},
+		{"hexists", []string{"k", "f1"}, true, nil},
+		{"hexists", []string{"k", "f3"}, false, nil},
+		{"hexists", []string{"l", "f3"}, nil, cmd.ErrInvalidValType},
+		{"hget", []string{"z", "f1"}, nil, nil},
+		{"hget", []string{"k", "f1"}, "v1", nil},
+		{"hget", []string{"k", "f2"}, "v2", nil},
+		{"hget", []string{"k", "f3"}, nil, nil},
+		{"hget", []string{"t", "f3"}, nil, cmd.ErrInvalidValType},
+		{"hgetall", []string{"z"}, []string{}, nil},
+		{"hgetall", []string{"k"}, []string{"f1", "v1", "f2", "v2"}, nil},
+		{"hgetall", []string{"s"}, nil, cmd.ErrInvalidValType},
+		{"hkeys", []string{"z"}, []string{}, nil},
+		{"hkeys", []string{"k"}, []string{"f1", "f2"}, nil},
+		{"hkeys", []string{"l"}, nil, cmd.ErrInvalidValType},
+		{"hlen", []string{"z"}, int64(0), nil},
+		{"hlen", []string{"k"}, int64(2), nil},
+		{"hlen", []string{"l"}, nil, cmd.ErrInvalidValType},
+		{"hmget", []string{"z", "f1", "f2", "f3"}, []interface{}{nil, nil, nil}, nil},
+		{"hmget", []string{"k", "f1", "f2", "f3"}, []interface{}{"v1", "v2", nil}, nil},
+		{"hmget", []string{"s", "f1", "f2", "f3"}, nil, cmd.ErrInvalidValType},
+		{"hmset", []string{"z", "f1", "v1", "f2", "v2"}, cmd.OKVal, nil},
+		{"hmset", []string{"k", "f1", "x1", "f3", "v3"}, cmd.OKVal, nil},
+		{"hgetall", []string{"k"}, []string{"f1", "x1", "f2", "v2", "f3", "v3"}, nil},
+		{"hmset", []string{"t", "f1", "x1"}, nil, cmd.ErrInvalidValType},
+		{"del", []string{"z"}, int64(1), nil},
+		{"hset", []string{"z", "f1", "v1"}, true, nil},
+		{"hset", []string{"k", "f1", "v1"}, false, nil},
+		{"hget", []string{"k", "f1"}, "v1", nil},
+		{"hset", []string{"k", "f4", "v4"}, true, nil},
+		{"hset", []string{"l", "f4", "v4"}, nil, cmd.ErrInvalidValType},
+		{"del", []string{"z"}, int64(1), nil},
+		{"hsetnx", []string{"z", "f1", "v1"}, true, nil},
+		{"hsetnx", []string{"k", "f1", "x1"}, false, nil},
+		{"hget", []string{"k", "f1"}, "v1", nil},
+		{"hsetnx", []string{"k", "f5", "v5"}, true, nil},
+		{"hsetnx", []string{"l", "f4", "v4"}, nil, cmd.ErrInvalidValType},
+		{"del", []string{"z"}, int64(1), nil},
+		{"hvals", []string{"z"}, []string{}, nil},
+		{"hvals", []string{"k"}, []string{"v1", "v2", "v3", "v4", "v5"}, nil},
+		{"hvals", []string{"s"}, nil, cmd.ErrInvalidValType},
+		{"hincrby", []string{"z", "i1", "3"}, int64(3), nil},
+		{"hincrby", []string{"k", "i1", "3"}, int64(3), nil},
+		{"hincrby", []string{"k", "i1", "-7"}, int64(-4), nil},
+		{"hincrby", []string{"k", "f1", "7"}, nil, cmd.ErrHashFieldNotInt},
+		{"hincrby", []string{"l", "f1", "7"}, nil, cmd.ErrInvalidValType},
+		{"del", []string{"z"}, int64(1), nil},
+		{"hincrbyfloat", []string{"z", "ff", "3.1"}, "3.1", nil},
+		{"hincrbyfloat", []string{"k", "ff", "1.2"}, "1.2", nil},
+		{"hincrbyfloat", []string{"k", "ff", "-7.4"}, "-6.2", nil},
+		{"hincrbyfloat", []string{"k", "f1", "1.4"}, nil, cmd.ErrHashFieldNotFloat},
+		{"hincrbyfloat", []string{"l", "f1", "7"}, nil, cmd.ErrInvalidValType},
 	}
 
 	var got interface{}
@@ -91,10 +154,10 @@ func TestCommand(t *testing.T) {
 
 		// Assert the results
 		if !reflect.DeepEqual(got, c.res) {
-			t.Errorf("%d: expected %v, got %v", i, c.res, got)
+			t.Errorf("%d [%s %v]: expected %v, got %v", i, c.name, c.args, c.res, got)
 		}
 		if c.err != gotErr {
-			t.Errorf("%d: expected error %v, got %v", i, c.err, gotErr)
+			t.Errorf("%d [%s %v]: expected error %v, got %v", i, c.name, c.args, c.err, gotErr)
 		}
 	}
 }
