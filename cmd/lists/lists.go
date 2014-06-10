@@ -124,7 +124,7 @@ func linsertFn(k srv.Key, args []string, ints []int64, floats []float64) (interf
 
 	v := k.Val()
 	if v, ok := v.(types.List); ok {
-		if args[0] == "before" {
+		if args[1] == "before" {
 			return v.LInsertBefore(args[2], args[3]), nil
 		}
 		return v.LInsertAfter(args[2], args[3]), nil

@@ -92,6 +92,7 @@ func TestListLInsertBefore(t *testing.T) {
 		4: {[]string{"a", "b", "c"}, "a", "z", 4, 0},
 		5: {[]string{"a", "b", "c"}, "b", "z", 4, 1},
 		6: {[]string{"a", "b", "c"}, "c", "z", 4, 2},
+		7: {[]string{"e", "d", "a", "c", "b", "a"}, "a", "z", 7, 2},
 	}
 	for i, c := range cases {
 		l := list(c.l)

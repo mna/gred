@@ -12,7 +12,6 @@ func init() {
 	cmd.Register("decrby", decrby)
 	cmd.Register("get", get)
 	cmd.Register("getrange", getrange)
-	//cmd.Register("substr", getrange) // alias
 	cmd.Register("getset", getset)
 	cmd.Register("incr", incr)
 	cmd.Register("incrby", incrby)
