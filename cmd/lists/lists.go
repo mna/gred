@@ -37,7 +37,11 @@ var blpop = cmd.NewDBCmd(
 	blpopFn)
 
 func blpopFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
-	return blockPop(db, ints[0], false, args[:len(args)-1]...)
+	ar, err := blockPop(db, ints[0], false, args[:len(args)-1]...)
+	if ar == nil {
+		return nil, err
+	}
+	return ar, nil
 }
 
 var brpop = cmd.NewDBCmd(
@@ -49,7 +53,11 @@ var brpop = cmd.NewDBCmd(
 	brpopFn)
 
 func brpopFn(db srv.DB, args []string, ints []int64, floats []float64) (interface{}, error) {
-	return blockPop(db, ints[0], true, args[:len(args)-1]...)
+	ar, err := blockPop(db, ints[0], true, args[:len(args)-1]...)
+	if ar == nil {
+		return nil, err
+	}
+	return ar, nil
 }
 
 var brpoplpush = cmd.NewDBCmd(
@@ -65,7 +73,7 @@ func brpoplpushFn(db srv.DB, args []string, ints []int64, floats []float64) (int
 	vals, err := blockPop(db, ints[0], true, args[0])
 	if vals == nil {
 		// Return either an error, or the nil timeout value
-		return vals, err
+		return nil, err
 	}
 
 	// Then proceed with lpush
