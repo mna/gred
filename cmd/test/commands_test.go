@@ -5,9 +5,11 @@ import (
 	"testing"
 
 	"github.com/PuerkitoBio/gred/cmd"
+	_ "github.com/PuerkitoBio/gred/cmd/connection"
 	_ "github.com/PuerkitoBio/gred/cmd/hashes"
 	_ "github.com/PuerkitoBio/gred/cmd/keys"
 	_ "github.com/PuerkitoBio/gred/cmd/lists"
+	_ "github.com/PuerkitoBio/gred/cmd/server"
 	_ "github.com/PuerkitoBio/gred/cmd/sets"
 	_ "github.com/PuerkitoBio/gred/cmd/strings"
 	"github.com/PuerkitoBio/gred/srv"
@@ -20,6 +22,16 @@ func TestCommand(t *testing.T) {
 		res  interface{}
 		err  error
 	}{
+		// Server commands
+		{"flushall", []string{}, cmd.OKVal, nil},
+		{"flushdb", []string{}, cmd.OKVal, nil},
+
+		// Connection commands
+		{"echo", []string{"test"}, "test", nil},
+		{"ping", []string{}, cmd.PongVal, nil},
+		{"select", []string{"0"}, cmd.OKVal, nil},
+		{"quit", []string{}, nil, cmd.ErrQuit},
+
 		// First create a key for all types
 		{"set", []string{"s", "val"}, cmd.OKVal, nil},
 		{"hset", []string{"h", "f1", "v1"}, true, nil},
