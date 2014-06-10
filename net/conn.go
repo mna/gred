@@ -11,6 +11,7 @@ import (
 	"github.com/PuerkitoBio/gred/cmd"
 	"github.com/PuerkitoBio/gred/resp"
 	"github.com/PuerkitoBio/gred/srv"
+	"github.com/golang/glog"
 )
 
 // NetConn defines the methods required to handle a network connection to the
@@ -65,6 +66,10 @@ func (c *netConn) Handle() error {
 			continue
 		}
 
+		if glog.V(2) {
+			glog.Infof("[%s] command received: %v", c.RemoteAddr(), ar)
+		}
+
 		// Run the command
 		var res interface{}
 		var rerr error
@@ -105,7 +110,13 @@ func (c *netConn) Handle() error {
 // writeResponse writes the response to the network connection.
 func (c *netConn) writeResponse(res interface{}, err error) error {
 	if err != nil {
+		if glog.V(2) {
+			glog.Infof("[%s] response sent: %v", c.RemoteAddr(), err)
+		}
 		return resp.Encode(c, resp.Error(err.Error()))
+	}
+	if glog.V(2) {
+		glog.Infof("[%s] response sent: %v", c.RemoteAddr(), res)
 	}
 	return resp.Encode(c, res)
 }
