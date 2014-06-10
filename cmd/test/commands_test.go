@@ -128,9 +128,11 @@ func TestCommand(t *testing.T) {
 		{"hincrbyfloat", []string{"k", "ff", "-7.4"}, "-6.2", nil},
 		{"hincrbyfloat", []string{"k", "f1", "1.4"}, nil, cmd.ErrHashFieldNotFloat},
 		{"hincrbyfloat", []string{"l", "f1", "7"}, nil, cmd.ErrInvalidValType},
+		{"hdel", []string{"k", "f1", "f2", "f3", "f4", "f5", "i1", "ff"}, int64(7), nil},
+		{"exists", []string{"k"}, false, nil},
 
 		// Lists
-		{"del", []string{"k"}, int64(1), nil},
+		{"del", []string{"k"}, int64(0), nil}, // because deleted by previous hdel
 		{"del", []string{"z"}, int64(1), nil},
 		{"lpush", []string{"k", "a", "b", "c", "a"}, int64(4), nil}, // a c b a
 		{"lrange", []string{"k", "0", "-1"}, []string{"a", "c", "b", "a"}, nil},
@@ -162,6 +164,9 @@ func TestCommand(t *testing.T) {
 		{"lpop", []string{"k"}, "d", nil}, // z a y c b a
 		{"lrange", []string{"k", "0", "-1"}, []string{"z", "a", "y", "c", "b", "a"}, nil},
 		{"lpop", []string{"s"}, nil, cmd.ErrInvalidValType},
+		{"lpush", []string{"j", "a"}, int64(1), nil},
+		{"lpop", []string{"j"}, "a", nil},
+		{"exists", []string{"j"}, false, nil},
 		{"lpushx", []string{"z", "a"}, int64(0), nil},
 		{"lpushx", []string{"k", "f"}, int64(7), nil}, // f z a y c b a
 		{"lrange", []string{"k", "0", "-1"}, []string{"f", "z", "a", "y", "c", "b", "a"}, nil},
@@ -183,6 +188,9 @@ func TestCommand(t *testing.T) {
 		{"lrem", []string{"k", "2", "a"}, int64(2), nil},
 		{"lrange", []string{"k", "0", "-1"}, []string{"b", "z", "y", "c", "a"}, nil},
 		{"lrem", []string{"s", "2", "a"}, nil, cmd.ErrInvalidValType},
+		{"lpush", []string{"j", "a"}, int64(1), nil},
+		{"lrem", []string{"j", "1", "a"}, int64(1), nil},
+		{"exists", []string{"j"}, false, nil},
 		{"lset", []string{"z", "2", "a"}, nil, cmd.ErrNoSuchKey},
 		{"lset", []string{"k", "2", "a"}, cmd.OKVal, nil},
 		{"lrange", []string{"k", "0", "-1"}, []string{"b", "z", "a", "c", "a"}, nil},
@@ -200,6 +208,8 @@ func TestCommand(t *testing.T) {
 		{"ltrim", []string{"k", "1", "1"}, cmd.OKVal, nil},
 		{"lrange", []string{"k", "0", "-1"}, []string{"a"}, nil},
 		{"ltrim", []string{"s", "1", "1"}, nil, cmd.ErrInvalidValType},
+		{"ltrim", []string{"k", "2", "4"}, cmd.OKVal, nil},
+		{"exists", []string{"k"}, false, nil},
 	}
 
 	var got interface{}
