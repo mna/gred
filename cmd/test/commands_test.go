@@ -34,9 +34,13 @@ func TestCommand(t *testing.T) {
 
 		// First create a key for all types
 		{"set", []string{"s", "val"}, cmd.OKVal, nil},
+		{"type", []string{"s"}, "string", nil},
 		{"hset", []string{"h", "f1", "v1"}, true, nil},
+		{"type", []string{"h"}, "hash", nil},
 		{"lpush", []string{"l", "v1"}, int64(1), nil},
+		{"type", []string{"l"}, "list", nil},
 		{"sadd", []string{"t", "v1"}, int64(1), nil},
+		{"type", []string{"t"}, "set", nil},
 
 		// Strings
 		{"append", []string{"k", "a"}, int64(1), nil},
