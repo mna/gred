@@ -241,6 +241,6 @@ The commands are listed by category, as it is on the [redis website][redis].
 | SLAVEOF          | ø      | |
 | SLOWLOG          | ø      | |
 | SYNC             | ø      | |
-| TIME             | ø      | |
+| TIME             | √      | |
 
 [redis]: http://redis.io/commands

@@ -1,6 +1,8 @@
 package server
 
 import (
+	"strconv"
+
 	"github.com/PuerkitoBio/gred/cmd"
 	"github.com/PuerkitoBio/gred/srv"
 )
@@ -8,6 +10,7 @@ import (
 func init() {
 	cmd.Register("flushdb", flushdb)
 	cmd.Register("flushall", flushall)
+	cmd.Register("time", time)
 }
 
 var flushdb = cmd.NewDBCmd(
@@ -38,4 +41,16 @@ func flushallFn(args []string, ints []int64, floats []float64) (interface{}, err
 
 	srv.DefaultServer.FlushAll()
 	return cmd.OKVal, nil
+}
+
+var time = cmd.NewSrvCmd(
+	&cmd.ArgDef{
+		MinArgs: 0,
+		MaxArgs: 0,
+	},
+	timeFn)
+
+func timeFn(args []string, ints []int64, floats []float64) (interface{}, error) {
+	s, us := srv.DefaultServer.Time()
+	return []string{strconv.FormatInt(s, 10), strconv.FormatInt(us, 10)}, nil
 }

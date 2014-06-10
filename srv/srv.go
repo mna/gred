@@ -2,14 +2,18 @@
 // and its keys.
 package srv
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 // Server defines the methods required to implement a Server.
 type Server interface {
 	RWLocker
 
-	GetDB(int) (DB, bool)
 	FlushAll()
+	GetDB(int) (DB, bool)
+	Time() (int64, int64)
 }
 
 const maxDBs = 16 // TODO : Should be read from configuration
@@ -50,4 +54,9 @@ func (s *server) GetDB(ix int) (DB, bool) {
 		s.dbs[ix] = db
 	}
 	return db, true
+}
+
+func (s *server) Time() (int64, int64) {
+	t := time.Now()
+	return t.Unix(), int64(time.Duration(t.Nanosecond()) / time.Microsecond)
 }
