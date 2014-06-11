@@ -269,6 +269,25 @@ func TestCommand(t *testing.T) {
 		{"blpop", []string{"l1", "1"}, nil, nil},
 		{"brpop", []string{"l1", "1"}, nil, nil},
 		{"brpoplpush", []string{"l1", "l2", "1"}, nil, nil},
+
+		// Sets
+		{"del", []string{"k"}, int64(1), nil},
+		{"sadd", []string{"k", "a", "b", "c", "a"}, int64(3), nil},
+		{"sadd", []string{"k", "c", "d"}, int64(1), nil},
+		{"sadd", []string{"s", "c", "d"}, nil, cmd.ErrInvalidValType},
+		{"scard", []string{"k"}, int64(4), nil},
+		{"scard", []string{"z"}, int64(0), nil},
+		{"scard", []string{"l"}, nil, cmd.ErrInvalidValType},
+		{"sadd", []string{"k2", "a", "d"}, int64(2), nil},
+		{"sadd", []string{"k3", "a", "f"}, int64(2), nil},
+		{"sdiff", []string{"k", "k2", "k3"}, []string{"b", "c"}, nil},
+		{"sdiff", []string{"z", "k2", "k3"}, []string{}, nil},
+		{"sdiff", []string{"k", "z", "z"}, []string{"a", "b", "c", "d"}, nil},
+		{"sdiff", []string{"k", "k"}, []string{}, nil},
+		{"sdiff", []string{"s", "k2", "k3"}, nil, cmd.ErrInvalidValType},
+		{"sdiff", []string{"k", "l", "k3"}, nil, cmd.ErrInvalidValType},
+		{"sdiffstore", []string{"j", "k", "k2", "k3"}, int64(2), nil},
+		{"sdiffstore", []string{"k3", "k", "k2", "k3"}, int64(2), nil}, // TODO : Triggers deadlock
 	}
 
 	var got interface{}
