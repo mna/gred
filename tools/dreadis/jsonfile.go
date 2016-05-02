@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"code.google.com/p/go-uuid/uuid"
 	"github.com/garyburd/redigo/redis"
+	"github.com/pborman/uuid"
 )
 
 func init() {
