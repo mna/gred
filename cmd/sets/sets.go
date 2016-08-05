@@ -13,6 +13,7 @@ func init() {
 	cmd.Register("sdiffstore", sdiffstore)
 	cmd.Register("sismember", sismember)
 	cmd.Register("smembers", smembers)
+	cmd.Register("srem", srem)
 }
 
 var sadd = cmd.NewSingleKeyCmd(
@@ -178,6 +179,25 @@ func smembersFn(k srv.Key, args []string, ints []int64, floats []float64) (inter
 	v := k.Val()
 	if v, ok := v.(types.Set); ok {
 		return v.SMembers(), nil
+	}
+	return nil, cmd.ErrInvalidValType
+}
+
+var srem = cmd.NewSingleKeyCmd(
+	&cmd.ArgDef{
+		MinArgs: 1,
+		MaxArgs: -1,
+	},
+	srv.NoKeyDefaultVal,
+	sremFn)
+
+func sremFn(k srv.Key, args []string, ints []int64, floats []float64) (interface{}, error) {
+	k.RLock()
+	defer k.RUnlock()
+
+	v := k.Val()
+	if v, ok := v.(types.Set); ok {
+		return v.SRem(args[1:]...), nil
 	}
 	return nil, cmd.ErrInvalidValType
 }

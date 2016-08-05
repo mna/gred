@@ -286,6 +286,8 @@ func TestCommand(t *testing.T) {
 		{"sdiff", []string{"k", "k"}, []string{}, nil},
 		{"sdiff", []string{"s", "k2", "k3"}, nil, cmd.ErrInvalidValType},
 		{"sdiff", []string{"k", "l", "k3"}, nil, cmd.ErrInvalidValType},
+		{"srem", []string{"k","a","b"},int64(2),nil},
+		{"srem", []string{"k","j"},int64(0),nil},
 		{"sdiffstore", []string{"j", "k", "k2", "k3"}, int64(2), nil},
 		{"sdiffstore", []string{"k3", "k", "k2", "k3"}, int64(2), nil}, // TODO : Triggers deadlock
 	}
