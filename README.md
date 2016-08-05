@@ -2,6 +2,8 @@
 
 `gred` is a pure-Go concurrent implementation of the [Redis][] server. See [features][] for the current state of supported features and commands.
 
+**Warning**: this was an experiment and is no longer under active development, nor maintained.
+
 ## Installation
 
 Install [go][], then run:
